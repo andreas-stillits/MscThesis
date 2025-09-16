@@ -45,7 +45,7 @@ def clean_mesh(mesh):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Convert water tight voxel representation in .npy to CAD model in .brep")
-    p.add_argument("input_npy", help="Path to the input .npy file containing a 3D array (boolean or 0/1)")
+    p.add_argument("input_npy", type=str, help="Path to the input .npy file containing a 3D array (boolean or 0/1)")
     p.add_argument("--spacing", type=lambda s: tuple(float(x) for x in s.split(',')), default=(1.0,1.0,1.0), help="voxel spacing sx,sy,sz (default 1.0,1.0,1.0)")
     p.add_argument("--freecad-cmd", default=DEFAULT_FREECAD_CMD, help="Path to the FreeCAD command line tool")
     p.add_argument("--freecad-script", default=DEFAULT_FREECAD_SCRIPT, help=f"Path to a custom FreeCAD conversion script (default assumes script is in the same directory as {__file__})") 

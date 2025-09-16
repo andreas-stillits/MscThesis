@@ -1,3 +1,9 @@
+"""
+freecad_converter.py
+Converts STL files to BRep format using FreeCAD's Python API.
+"""
+
+
 import os, sys
 import Mesh, Part 
 
