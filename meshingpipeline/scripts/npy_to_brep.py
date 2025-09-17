@@ -50,7 +50,7 @@ def main(argv=None):
     p.add_argument("--freecad-cmd", default=DEFAULT_FREECAD_CMD, help="Path to the FreeCAD command line tool")
     p.add_argument("--freecad-script", default=DEFAULT_FREECAD_SCRIPT, help=f"Path to a custom FreeCAD conversion script (default assumes script is in the same directory as {__file__})") 
     p.add_argument("--suppress", default=False, action="store_true", help="Suppress verbose output")
-    p.add_argument("--smoothing_iter", type=int, default=DEFAULT_SMOOTHING_ITER, help="Number of Taubin smoothing iterations (default 10)")
+    p.add_argument("--smoothing-iter", type=int, default=DEFAULT_SMOOTHING_ITER, help="Number of Taubin smoothing iterations (default 10)")
     p.add_argument("--decimate", type=int, default=DEFAULT_DECIMATE, help="Target number of triangles after decimation (default 10.000)")
     args = p.parse_args(argv)
     
