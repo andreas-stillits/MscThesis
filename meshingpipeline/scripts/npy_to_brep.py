@@ -70,11 +70,6 @@ def main(argv=None):
     mesh = clean_mesh(mesh)
     if not args.suppress: print("Initial triangles=", len(np.asarray(mesh.triangles)), "vertices=", len(np.asarray(mesh.vertices)))
 
-    # apply smoothing
-    if not args.suppress: print(f"Applying {args.smoothing_iter} Taubin smoothing iterations...")
-    mesh = mesh.filter_smooth_taubin(number_of_iterations=args.smoothing_iter)
-    mesh = clean_mesh(mesh)
-
     # apply mesh decimation
     if not args.suppress: print(f"Decimating mesh to ~{args.decimate} triangles...")
     current = len(np.asarray(mesh.triangles)) # get current triangle count
@@ -83,6 +78,11 @@ def main(argv=None):
         mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=target)
     mesh = clean_mesh(mesh)
     if not args.suppress: print("Post-decimation triangles=", len(np.asarray(mesh.triangles)), "vertices=", len(np.asarray(mesh.vertices)))
+
+    # apply smoothing
+    if not args.suppress: print(f"Applying {args.smoothing_iter} Taubin smoothing iterations...")
+    mesh = mesh.filter_smooth_taubin(number_of_iterations=args.smoothing_iter)
+    mesh = clean_mesh(mesh)
 
     # check that mesh is manifold and water tight
     edge_manifold = mesh.is_edge_manifold()
