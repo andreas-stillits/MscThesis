@@ -19,6 +19,7 @@ Options:
     --suppress               Suppress verbose output
     --smoothing_iter N       Number of Taubin smoothing iterations (default 10)
     --decimate N             Target number of triangles after decimation (default 10,000)
+    --open-gui               Open Open3D visualization window (default: False)
 """
 
 import os
@@ -30,8 +31,9 @@ from skimage import measure
 
 DEFAULT_FREECAD_CMD = "freecadcmd-daily"
 DEFAULT_FREECAD_SCRIPT = os.path.join(os.path.dirname(__file__), "freecad_converter.py")
-DEFAULT_SMOOTHING_ITER = 30
+DEFAULT_SMOOTHING_ITER = 15
 DEFAULT_DECIMATE = 10_000
+SHRINKAGE_TOLERANCE = 0.10  # 10 percent volume/surface shrinkage tolerance
 
 
 def clean_mesh(mesh):
@@ -50,8 +52,9 @@ def main(argv=None):
     p.add_argument("--freecad-cmd", default=DEFAULT_FREECAD_CMD, help="Path to the FreeCAD command line tool")
     p.add_argument("--freecad-script", default=DEFAULT_FREECAD_SCRIPT, help=f"Path to a custom FreeCAD conversion script (default assumes script is in the same directory as {__file__})") 
     p.add_argument("--suppress", default=False, action="store_true", help="Suppress verbose output")
-    p.add_argument("--smoothing-iter", type=int, default=DEFAULT_SMOOTHING_ITER, help="Number of Taubin smoothing iterations (default 10)")
-    p.add_argument("--decimate", type=int, default=DEFAULT_DECIMATE, help="Target number of triangles after decimation (default 10.000)")
+    p.add_argument("--smoothing-iter", type=int, default=DEFAULT_SMOOTHING_ITER, help=f"Number of Taubin smoothing iterations (default {DEFAULT_SMOOTHING_ITER})")
+    p.add_argument("--decimate", type=int, default=DEFAULT_DECIMATE, help=f"Target number of triangles after decimation (default {DEFAULT_DECIMATE})")
+    p.add_argument("--open-gui", default=False, action="store_true", help="Open Open3D visualization window (default: False)")
     args = p.parse_args(argv)
     
     # make sure that the input file exists
@@ -60,7 +63,8 @@ def main(argv=None):
     
     # load file
     voxels = np.load(args.input_npy)
-    if not args.suppress: print("loaded volume shape:", voxels.shape, 'spacing:', args.spacing)
+    print("loaded volume shape:", voxels.shape, 
+                                "spacing:", args.spacing)
 
     # convert to triangular surface mesh using Open3D
     verts, faces, normals, values = measure.marching_cubes(voxels, spacing=args.spacing, level=0.5)
@@ -68,7 +72,18 @@ def main(argv=None):
     mesh.vertices = o3d.utility.Vector3dVector(verts)
     mesh.triangles = o3d.utility.Vector3iVector(faces)
     mesh = clean_mesh(mesh)
-    if not args.suppress: print("Initial triangles=", len(np.asarray(mesh.triangles)), "vertices=", len(np.asarray(mesh.vertices)))
+    # get surface area and volume
+    pre_area = mesh.get_surface_area()
+    pre_volume = mesh.get_volume()
+    if not args.suppress: print("Initial triangles=", len(np.asarray(mesh.triangles)), 
+        "vertices=", len(np.asarray(mesh.vertices)), "\n",
+        "surface area={:.2f}".format(pre_area),
+        "volume={:.2f}".format(pre_volume))
+
+    # apply smoothing
+    if not args.suppress: print(f"Applying {args.smoothing_iter} Taubin smoothing iterations...")
+    mesh = mesh.filter_smooth_taubin(number_of_iterations=args.smoothing_iter)
+    mesh = clean_mesh(mesh)
 
     # apply mesh decimation
     if not args.suppress: print(f"Decimating mesh to ~{args.decimate} triangles...")
@@ -76,19 +91,22 @@ def main(argv=None):
     target = args.decimate
     if not target >= current:
         mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=target)
-    mesh = clean_mesh(mesh)
-    if not args.suppress: print("Post-decimation triangles=", len(np.asarray(mesh.triangles)), "vertices=", len(np.asarray(mesh.vertices)))
-
-    # apply smoothing
-    if not args.suppress: print(f"Applying {args.smoothing_iter} Taubin smoothing iterations...")
-    mesh = mesh.filter_smooth_taubin(number_of_iterations=args.smoothing_iter)
-    mesh = clean_mesh(mesh)
+        mesh = clean_mesh(mesh)
+    elif not args.suppress:
+        print(f"Skipping decimation as current triangle count {current} is less than target {target}.")
+    post_area = mesh.get_surface_area()
+    post_volume = mesh.get_volume()
+    if not args.suppress: print("Post-decimation triangles=", len(np.asarray(mesh.triangles)), 
+                                "vertices=", len(np.asarray(mesh.vertices)), "\n" , 
+                                "surface area={:.2f}".format(post_area),
+                                "volume={:.2f}".format(post_volume))
 
     # check that mesh is manifold and water tight
     edge_manifold = mesh.is_edge_manifold()
     vertex_manifold = mesh.is_vertex_manifold()
     watertight = mesh.is_watertight()
-    if not args.suppress: print("Mesh manifold:", edge_manifold, vertex_manifold, "Watertight:", watertight)
+    if not args.suppress: print("Mesh manifold:", edge_manifold, vertex_manifold, "\n", 
+                                "Watertight:", watertight)
     
     # abort if these conditions are not met
     if not (edge_manifold and vertex_manifold and watertight):
@@ -128,7 +146,21 @@ def main(argv=None):
                 if not args.suppress: print("FreeCAD conversion completed successfully.")
         except Exception as e:
             print("Error running FreeCAD command:", e)
-
+    # warn if total shrinkage is above tolerance
+    surface_shrinkage = abs(post_area - pre_area) / pre_area
+    volume_shrinkage = abs(post_volume - pre_volume) / pre_volume
+    warned = False
+    if surface_shrinkage > SHRINKAGE_TOLERANCE or volume_shrinkage > SHRINKAGE_TOLERANCE:
+        print(f"WARNING: Significant shrinkage detected!\n"
+              f"Surface area shrinkage: {surface_shrinkage*100:.2f}%\n"
+              f"Volume shrinkage: {volume_shrinkage*100:.2f}%\n")
+        print("Consider adjusting smoothing or decimation parameters.")
+        warned = True
+    if not args.suppress and not warned:
+        print(f"Surface area shrinkage: {surface_shrinkage*100:.2f}%")
+        print(f"Volume shrinkage: {volume_shrinkage*100:.2f}%")
+    if args.open_gui:
+        o3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
     return 0
 
 if __name__ == "__main__":
