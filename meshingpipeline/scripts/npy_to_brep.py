@@ -30,7 +30,7 @@ from skimage import measure
 
 DEFAULT_FREECAD_CMD = "freecadcmd-daily"
 DEFAULT_FREECAD_SCRIPT = os.path.join(os.path.dirname(__file__), "freecad_converter.py")
-DEFAULT_SMOOTHING_ITER = 10
+DEFAULT_SMOOTHING_ITER = 30
 DEFAULT_DECIMATE = 10_000
 
 
