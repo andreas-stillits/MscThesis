@@ -60,7 +60,10 @@ def main(argv=None):
     # make sure that the input file exists
     if not os.path.isfile(args.input_npy):
         raise FileNotFoundError(f"Input file {args.input_npy} does not exist.")
-    
+    # make sure that the input file is .npy
+    if not args.input_npy.lower().endswith(".npy"):
+        raise ValueError(f"Input file {args.input_npy} is not a .npy file.")
+
     # load file
     voxels = np.load(args.input_npy)
     print("loaded volume shape:", voxels.shape, 
