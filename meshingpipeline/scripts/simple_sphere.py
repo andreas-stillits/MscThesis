@@ -158,10 +158,15 @@ def main(argv=None):
     if not args.suppress: print("Curved area:", curved_area_target)
 
     curved_area_found = []
+    curved_area_tag = None
+    top_area_tag = None 
+    bottom_area_tag = None
     def iscurved(tag):
         area = kernel.getMass(2, tag)
         trigger = abs(area/curved_area_target - 1) <= args.tolerance
-        if trigger: curved_area_found.append(area); print(f"Curved area found: {area}, relative error: {area/curved_area_target - 1:.6f}")
+        if trigger: 
+            curved_area_found.append(area)
+            print(f"Curved area found: {area}, relative error: {area/curved_area_target - 1:.6f}")
         return trigger
     
     # airspace
@@ -175,24 +180,53 @@ def main(argv=None):
         if np.isclose(com[2], 1.0):
             # top surface
             gmsh.model.addPhysicalGroup(2, [tag], 2, name="top_surface")
+            top_area_tag = tag
             if not args.suppress: print(f"Top surface assigned to physical group 'top_surface'")
         elif np.isclose(com[2], 0.0):
             # bottom surface
             gmsh.model.addPhysicalGroup(2, [tag], 3, name="bottom_surface")
+            bottom_area_tag = tag
             if not args.suppress: print(f"Bottom surface assigned to physical group 'bottom_surface'")
         elif iscurved(tag):
             # curved surface of cylinder
             gmsh.model.addPhysicalGroup(2, [tag], 4, name="curved_surface")
+            curved_area_tag = tag
             if not args.suppress: print(f"Curved surface assigned to physical group 'curved_surface'")
         else:
             # other surfaces
             mesophyll_surface_tags.append(tag)
     gmsh.model.addPhysicalGroup(2, mesophyll_surface_tags, 5, name="mesophyll_surfaces")
-    if not args.suppress: 
-        print(f"Other surfaces assigned to physical group 'mesophyll_surfaces'")
+    if not args.suppress: print(f"Other surfaces assigned to physical group 'mesophyll_surfaces'")
     assert len(curved_area_found) == 1, f"Error identifying curved face of cylinder. Found {len(curved_area_found)} curved faces with relative errors from target: {[area/curved_area_target - 1 for area in curved_area_found]}"
+    if not args.suppress: print("Physical groups assigned. Proceeding to mesh generation...")
     #____________________________________________________
-
+    # Specify mesh size fields
+    mesophyll_distance = gmsh.model.mesh.field.add("Distance")
+    gmsh.model.mesh.field.setNumbers(mesophyll_distance, "FacesList", mesophyll_surface_tags)
+    resolution = 0.02
+    minimum = 0.05 
+    max     = 0.2
+    mesophyll_threshold = gmsh.model.mesh.field.add("Threshold")    
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "IField", mesophyll_distance)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "LcMin", resolution)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "LcMax", 10 * resolution)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "DistMin", minimum)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "DistMax", max)
+    #
+    inlet_distance = gmsh.model.mesh.field.add("Distance")
+    gmsh.model.mesh.field.setNumbers(inlet_distance, "FacesList", [bottom_area_tag])
+    inlet_threshold = gmsh.model.mesh.field.add("Threshold")
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "IField", inlet_distance)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "LcMin", 2*resolution)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "LcMax", 10 * resolution)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "DistMin", minimum)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "DistMax", max)
+    #
+    minimum_field = gmsh.model.mesh.field.add("Min")
+    gmsh.model.mesh.field.setNumbers(minimum_field, "FieldsList", [mesophyll_threshold, inlet_threshold])
+    gmsh.model.mesh.field.setAsBackgroundMesh(minimum_field)
+    kernel.synchronize()
+    #____________________________________________________
     gmsh.model.mesh.generate(3)
     gmsh.write(args.output_path)
     if not args.suppress: 
