@@ -10,7 +10,7 @@ The code will produce an .stl and a .brep file in the same directory
 as the input .npy file and inherit its file name.
 
 Usage:
-    python npy_to_brep.py path/to/your_file.npy [options]
+    python npy_to_brep.py <input_file.npy> [options]
 
 Options:
     --spacing sx,sy,sz       Voxel spacing in each dimension (default 1.0,1.0,1.0)

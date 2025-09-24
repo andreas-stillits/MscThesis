@@ -96,6 +96,7 @@ def main(argv=None):
 
     # import the BRep file
     tissue = kernel.importShapes(args.input_brep) # usually [(3, 1)]
+    print("Tissue shape: ", tissue)
     kernel.synchronize()
     if not args.suppress:
         print(f"Imported shape from {args.input_brep}")
@@ -122,7 +123,7 @@ def main(argv=None):
         *axis,
         radius))]
     kernel.synchronize()
-    
+    print("Cylinder shape: ", cylinder)
     # perform boolean cut to create airspace
     airspace, _ = kernel.cut(cylinder, tissue, removeObject=True, removeTool=True)
     kernel.synchronize()
@@ -150,7 +151,7 @@ def main(argv=None):
 
     # determine curved face tag 
     # OBS: this approach of identification by area only works if the curved area 2 pi r is unique up to tolerace
-    # However, top and bottom surfaces will always be caught by the COM z-coordinate check below
+    # However, top and bottom surfaces will always be distinctly caught by the COM z-coordinate check below
     center, size = get_bbox(airspace)
     a = size[0]/2
     b = size[1]/2
@@ -199,6 +200,9 @@ def main(argv=None):
     if not args.suppress: print(f"Other surfaces assigned to physical group 'mesophyll_surfaces'")
     assert len(curved_area_found) == 1, f"Error identifying curved face of cylinder. Found {len(curved_area_found)} curved faces with relative errors from target: {[area/curved_area_target - 1 for area in curved_area_found]}"
     if not args.suppress: print("Physical groups assigned. Proceeding to mesh generation...")
+    assert top_area_tag is not None and bottom_area_tag is not None, "Error identifying top or bottom surface of cylinder"
+    volumes = gmsh.model.getEntities(dim=3)
+    print(len(volumes), "volumes found:", volumes)
     #____________________________________________________
     # Specify mesh size fields
     mesophyll_distance = gmsh.model.mesh.field.add("Distance")
