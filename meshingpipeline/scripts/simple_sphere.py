@@ -1,9 +1,20 @@
 """ 
 simple_sphere.py
 
-docstring
+Script for automating .brep --> .msh conversion for a simple sphere geometry.
+Creates a spherical airspace inside a cylinder tissue block by boolean cutting a sphere from a cylinder.
 
+Usage:
+    python simple_sphere.py <input.brep> [options]
 
+Options:
+    --suppress               Suppress verbose output
+    --suppress-gmsh          Suppress Gmsh terminal output
+    --output-path <path>     Path to output .msh file. if not provided, use input path with .msh extension
+    --bm <float>             Boundary margin fraction for cylinder plug no-flux boundaries (default: 0.01)
+    --scm <float>            Substomatal cavity margin fraction for cylinder plug (default: 0.2)
+    --tolerance <float>      Tolerance for geometric comparisons (default: 0.01)
+    --open-gui               Open the Gmsh GUI to visualize the mesh after generation
 """
 
 import os
@@ -16,13 +27,14 @@ kernel = gmsh.model.occ
 
 BOUNDARY_MARGIN_FRACTION = 0.01
 SUBSTOMATAL_CAVITY_MARGIN_FRACTION = 0.2
-TOLERANCE = 1e-5
+TOLERANCE = 0.01
 
 def iterative_affine_transformation(entity, transformation, error, max_iterations=5, tolerance=1e-6, target_size=1.0):
     """ 
-    Apply iterative affine transformation to an entity until the error is below the tolerance
+    Iteratively apply an affine transformation to an entity until the error is below the tolerance
     """
-    for iteration in range(max_iterations):
+    count = 0
+    for _ in range(max_iterations):
         center, size = get_bbox(entity)
         current_error = abs(error(center, size, target_size))   
         if current_error < tolerance:
@@ -30,7 +42,8 @@ def iterative_affine_transformation(entity, transformation, error, max_iteration
         transform = transformation(center, size, target_size)
         kernel.affineTransform(entity, transform)
         kernel.synchronize()
-    return iteration + 1
+        count += 1
+    return count
 
 
 def get_bbox(entity):
@@ -54,7 +67,8 @@ def main(argv=None):
     p.add_argument("--output-path", type=str, default=None, help="Path to output .msh file. if not provided, will use input path with .msh extension")
     p.add_argument("--bm", type=float, default=BOUNDARY_MARGIN_FRACTION, help=f"Boundary margin fraction for cylinder plug no-flux boundaries (default: {BOUNDARY_MARGIN_FRACTION:.2f})")
     p.add_argument("--scm", type=float, default=SUBSTOMATAL_CAVITY_MARGIN_FRACTION, help=f"Substomatal cavity margin fraction for cylinder plug (default: {SUBSTOMATAL_CAVITY_MARGIN_FRACTION:.2f})")
-    p.add_argument("--open-gui", default=False, action="store_true", help="Open the Gmsh GUI to visualize the mesh after generation")
+    p.add_argument("--tolerance", type=float, default=TOLERANCE, help=f"Tolerance for geometric comparisons (default: {TOLERANCE:.3f})")
+    p.add_argument("--open-gui", default=False, action="store_true", help="Open the Gmsh GUI to visualize the mesh after generation")    
     args = p.parse_args(argv)
     
     # check if input file exists
@@ -68,11 +82,13 @@ def main(argv=None):
     # set output path
     if args.output_path is None:
         args.output_path = os.path.splitext(args.input_brep)[0] + ".msh"
+    elif not args.output_path.lower().endswith(".msh"):
+        raise ValueError(f"Output file {args.output_path} is not a .msh file")
 
     # initialize gmsh
     gmsh.initialize()
     gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1) # fix getBoundingBox to use STL bounds (more robust)
-    gmsh.model.add("Leaf plug model of simple single sphere")
+    gmsh.model.add("Leaf Plug Model")
 
     # suppress gmsh output if requested
     if args.suppress or args.suppress_gmsh:
@@ -85,55 +101,74 @@ def main(argv=None):
         print(f"Imported shape from {args.input_brep}")
 
 
-    # get bounding box
-    center, size = get_bbox(tissue)
-    center_z = center[2] - size[2]*(0.5 + args.scm)
-    height   = size[2]*(1 + args.scm + args.bm)
-
+    # calculate cylinder geometry
+    center, size   = get_bbox(tissue)
+    bottom_z       = center[2] - size[2]*(0.5 + args.scm) # z-coordinate of the bottom cylinder surface
+    height         = size[2]*(1 + args.scm + args.bm)
     # determine the appropriate dimensions for the cylinder plug
-    center_surface = (center[0], center[1], center_z)
+    bottom_surface = (center[0], center[1], bottom_z)
     axis           = (0, 0, height)
     radius         = (1+args.bm)*np.sqrt((size[0]/2)**2 + (size[1]/2)**2)
     
+    if not args.suppress:
+        print(f"Calculated cylinder plug dimensions:")
+        print(f"  bottom_surface: {bottom_surface}")
+        print(f"  axis:           {axis}")
+        print(f"  radius:         {radius:.3f}")
+
     # create the cylinder plug
     cylinder = [(3, kernel.addCylinder(
-        *center_surface,
+        *bottom_surface,
         *axis,
         radius))]
     kernel.synchronize()
     
-    # determine curved face tag 
-    outer_faces = gmsh.model.getBoundary(cylinder, False, False)
-    curved_area = 2*np.pi*radius*height
-    is_curved = lambda tag: abs(kernel.getMass(2, tag)/curved_area - 1) <= TOLERANCE
-    curved_face = [(2, tag) for (dim, tag) in outer_faces if is_curved(tag)]
-    assert len(curved_face) == 1, "Error identifying curved face of cylinder"
-    print("curved area entity", curved_face)
-    
     # perform boolean cut to create airspace
-    airspace, outDimTagMap = kernel.cut(cylinder, tissue, removeObject=True, removeTool=True)
+    airspace, _ = kernel.cut(cylinder, tissue, removeObject=True, removeTool=True)
     kernel.synchronize()
+    if not args.suppress:
+        print(f"Created airspace by boolean cut of cylinder and tissue", airspace)
 
-    # transform so center_surface is at origin and height is 1
-    scale = 1.0 / height
-    transform = [
-        scale, 0, 0, -center_surface[0]*scale,
-        0, scale, 0, -center_surface[1]*scale,
-        0, 0, scale, -center_surface[2]*scale,
+    # Iteratively apply affine transformation to airspace to center bottom surface at origin and scale height to 1
+    transformation = lambda center, size, target_size: [
+        (target_size / size[2]), 0, 0, - center[0]           *(target_size / size[2]),
+        0, (target_size / size[2]), 0, - center[1]           *(target_size / size[2]),
+        0, 0, (target_size / size[2]), -(center[2]-size[2]/2)*(target_size / size[2]),
         0, 0, 0, 1
     ]
-    kernel.affineTransform(airspace, transform)
-    kernel.synchronize()
-    if not args.suppress: print(f"Finished transformations. Assigning physical groups...")
+    error      = lambda center, size, target_size: (size[2] - target_size)/target_size
+    iterations = iterative_affine_transformation(airspace, transformation, error, max_iterations=5, target_size=1.0)
+
+    if not args.suppress: 
+        center, size = get_bbox(airspace)
+        print(f"Applied {iterations} affine transformations to airspace. New center: {center}, New size: {size}")
+        print(f"Finished transformations. Assigning physical groups...")
     #____________________________________________________
     
     
     # Assign Physical Groups
+
+    # determine curved face tag 
+    # OBS: this approach of identification by area only works if the curved area 2 pi r is unique up to tolerace
+    # However, top and bottom surfaces will always be caught by the COM z-coordinate check below
+    center, size = get_bbox(airspace)
+    a = size[0]/2
+    b = size[1]/2
+    curved_area_target = np.pi*(3*(a+b)-np.sqrt((3*a+b)*(a+3*b))) # approximation of ellipse circumference to account for slight transform assymetry
+    if not args.suppress: print("Curved area:", curved_area_target)
+
+    curved_area_found = []
+    def iscurved(tag):
+        area = kernel.getMass(2, tag)
+        trigger = abs(area/curved_area_target - 1) <= args.tolerance
+        if trigger: curved_area_found.append(area); print(f"Curved area found: {area}, relative error: {area/curved_area_target - 1:.6f}")
+        return trigger
+    
     # airspace
     gmsh.model.addPhysicalGroup(3, [tag for dim, tag in airspace], 1, name="airspace")
     # surfaces
     surfaces = gmsh.model.getEntities(dim=2)
-    print(len(surfaces), "surfaces found")
+    if not args.suppress: print(len(surfaces), "surfaces found")
     mesophyll_surface_tags = []
     for dim, tag in surfaces:
         com = gmsh.model.occ.getCenterOfMass(dim, tag)
@@ -145,7 +180,7 @@ def main(argv=None):
             # bottom surface
             gmsh.model.addPhysicalGroup(2, [tag], 3, name="bottom_surface")
             if not args.suppress: print(f"Bottom surface assigned to physical group 'bottom_surface'")
-        elif tag == curved_face[0][1]:
+        elif iscurved(tag):
             # curved surface of cylinder
             gmsh.model.addPhysicalGroup(2, [tag], 4, name="curved_surface")
             if not args.suppress: print(f"Curved surface assigned to physical group 'curved_surface'")
@@ -153,16 +188,19 @@ def main(argv=None):
             # other surfaces
             mesophyll_surface_tags.append(tag)
     gmsh.model.addPhysicalGroup(2, mesophyll_surface_tags, 5, name="mesophyll_surfaces")
-    if not args.suppress: print(f"Other surfaces assigned to physical group 'mesophyll_surfaces'")
+    if not args.suppress: 
+        print(f"Other surfaces assigned to physical group 'mesophyll_surfaces'")
+    assert len(curved_area_found) == 1, f"Error identifying curved face of cylinder. Found {len(curved_area_found)} curved faces with relative errors from target: {[area/curved_area_target - 1 for area in curved_area_found]}"
     #____________________________________________________
 
     gmsh.model.mesh.generate(3)
     gmsh.write(args.output_path)
-    if not args.suppress: print(f"Mesh written to {args.output_path}")
+    if not args.suppress: 
+        print(f"Mesh written to {args.output_path}")
     if args.open_gui: gmsh.fltk.run()
 
     gmsh.finalize()
-    print("Gmsh finalized")
+    if not args.suppress: print("Gmsh finalized")
 
     return 0
 
