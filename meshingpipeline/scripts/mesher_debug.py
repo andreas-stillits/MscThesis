@@ -25,14 +25,9 @@ import gmsh
 # set namespace
 kernel = gmsh.model.occ
 
-BOUNDARY_MARGIN_FRACTION = 0.05
+BOUNDARY_MARGIN_FRACTION = 0.01
 SUBSTOMATAL_CAVITY_MARGIN_FRACTION = 0.2
 TOLERANCE = 0.01
-MINIMUM_RESOLUTION = 0.02
-MAXIMUM_RESOLUTION = 0.2
-MINIMUM_DISTANCE   = 0.05
-MAXIMUM_DISTANCE   = 0.2
-INLET_BASE_RESOLUTION_FACTOR = 2.0
 
 def iterative_affine_transformation(entity, transformation, error, max_iterations=5, tolerance=1e-6, target_size=1.0):
     """ 
@@ -101,23 +96,11 @@ def main(argv=None):
 
     # import the BRep file
     tissue = kernel.importShapes(args.input_brep) # usually [(3, 1)]
+    print("Tissue shape: ", tissue)
     kernel.synchronize()
     if not args.suppress:
         print(f"Imported shape from {args.input_brep}")
 
-    # Identify appropriate cylinder plug dimensions
-    # shift to center at origin
-    center, size = get_bbox(tissue)
-    kernel.translate(tissue, -center[0], -center[1], -center[2])
-    kernel.synchronize()
-    # perform 2D meshing and extract the point furthest away from origin in xy-plane
-    gmsh.model.mesh.generate(2)
-    node_tags, node_coords, _ = gmsh.model.mesh.getNodes()
-    node_coords = np.array(node_coords).reshape(-1, 3)
-    distances = np.linalg.norm(node_coords[:, :2], axis=1)
-    max_distance = np.max(distances)
-    if not args.suppress: 
-        print(f"Identified maximum radial distance in xy-plane: {max_distance}")
 
     # calculate cylinder geometry
     center, size   = get_bbox(tissue)
@@ -126,7 +109,7 @@ def main(argv=None):
     # determine the appropriate dimensions for the cylinder plug
     bottom_surface = (center[0], center[1], bottom_z)
     axis           = (0, 0, height)
-    radius         = (1+args.bm)*max_distance #np.sqrt((size[0]/2)**2 + (size[1]/2)**2)
+    radius         = (1+args.bm)*np.sqrt((size[0]/2)**2 + (size[1]/2)**2)
     
     if not args.suppress:
         print(f"Calculated cylinder plug dimensions:")
@@ -140,10 +123,18 @@ def main(argv=None):
         *axis,
         radius))]
     kernel.synchronize()
+    print("Cylinder shape: ", cylinder)
+    
+    volumes = gmsh.model.getEntities(dim=3)
+    if not args.suppress:
+        print(len(volumes), "volumes found before boolean cut:", volumes)
+    #____________________________________________________
 
     # perform boolean cut to create airspace
     airspace, _ = kernel.cut(cylinder, tissue, removeObject=True, removeTool=True)
     kernel.synchronize()
+    if not args.suppress:
+        print(f"Created airspace by boolean cut of cylinder and tissue", airspace)
 
     volumes = gmsh.model.getEntities(dim=3)
     largest_volume = 0
@@ -156,12 +147,15 @@ def main(argv=None):
 
     for dim, tag in volumes:
         if tag != largest_volume_tag:
-            kernel.remove([(dim, tag)]) # recurvsive=True will remove all lower dimensional entities shared at the boundary
+            kernel.remove([(dim, tag)])
 
     kernel.synchronize()
     airspace = [(3, largest_volume_tag)]
     if not args.suppress:
         print(f"Retained largest volume as airspace: {airspace}")
+        volumes = gmsh.model.getEntities(dim=3)
+        print(len(volumes), "volumes found after boolean cut:", volumes)
+
 
     # Iteratively apply affine transformation to airspace to center bottom surface at origin and scale height to 1
     transformation = lambda center, size, target_size: [
@@ -179,6 +173,7 @@ def main(argv=None):
         print(f"Finished transformations. Assigning physical groups...")
     #____________________________________________________
     
+    
     # Assign Physical Groups
 
     # determine curved face tag 
@@ -188,18 +183,18 @@ def main(argv=None):
     a = size[0]/2
     b = size[1]/2
     curved_area_target = np.pi*(3*(a+b)-np.sqrt((3*a+b)*(a+3*b))) # approximation of ellipse circumference to account for slight transform assymetry
+    if not args.suppress: print("Curved area:", curved_area_target)
 
     curved_area_found = []
     curved_area_tag = None
     top_area_tag = None 
     bottom_area_tag = None
-
     def iscurved(tag):
         area = kernel.getMass(2, tag)
         trigger = abs(area/curved_area_target - 1) <= args.tolerance
         if trigger: 
             curved_area_found.append(area)
-            print(f"Curved area found, relative error: {area/curved_area_target - 1:.6f}")
+            print(f"Curved area found: {area}, relative error: {area/curved_area_target - 1:.6f}")
         return trigger
     
     # airspace
@@ -214,41 +209,49 @@ def main(argv=None):
             # top surface
             gmsh.model.addPhysicalGroup(2, [tag], 2, name="top_surface")
             top_area_tag = tag
+            if not args.suppress: print(f"Top surface assigned to physical group 'top_surface'")
         elif np.isclose(com[2], 0.0):
             # bottom surface
             gmsh.model.addPhysicalGroup(2, [tag], 3, name="bottom_surface")
             bottom_area_tag = tag
+            if not args.suppress: print(f"Bottom surface assigned to physical group 'bottom_surface'")
         elif iscurved(tag):
             # curved surface of cylinder
             gmsh.model.addPhysicalGroup(2, [tag], 4, name="curved_surface")
             curved_area_tag = tag
+            if not args.suppress: print(f"Curved surface assigned to physical group 'curved_surface'")
         else:
             # other surfaces
             mesophyll_surface_tags.append(tag)
     gmsh.model.addPhysicalGroup(2, mesophyll_surface_tags, 5, name="mesophyll_surfaces")
+    if not args.suppress: print(f"Other surfaces assigned to physical group 'mesophyll_surfaces'")
     assert len(curved_area_found) == 1, f"Error identifying curved face of cylinder. Found {len(curved_area_found)} curved faces with relative errors from target: {[area/curved_area_target - 1 for area in curved_area_found]}"
-    if not args.suppress: 
-        print("Physical groups assigned. Proceeding to mesh generation...")
+    if not args.suppress: print("Physical groups assigned. Proceeding to mesh generation...")
     assert top_area_tag is not None and bottom_area_tag is not None, "Error identifying top or bottom surface of cylinder"
+    volumes = gmsh.model.getEntities(dim=3)
+    print(len(volumes), "volumes found:", volumes)
     #____________________________________________________
     # Specify mesh size fields
     mesophyll_distance = gmsh.model.mesh.field.add("Distance")
     gmsh.model.mesh.field.setNumbers(mesophyll_distance, "FacesList", mesophyll_surface_tags)
+    resolution = 0.02
+    minimum = 0.05 
+    max     = 0.2
     mesophyll_threshold = gmsh.model.mesh.field.add("Threshold")    
     gmsh.model.mesh.field.setNumber(mesophyll_threshold, "IField", mesophyll_distance)
-    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "LcMin", MINIMUM_RESOLUTION)
-    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "LcMax", MAXIMUM_RESOLUTION)
-    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "DistMin", MINIMUM_DISTANCE)
-    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "DistMax", MAXIMUM_DISTANCE)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "LcMin", resolution)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "LcMax", 10 * resolution)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "DistMin", minimum)
+    gmsh.model.mesh.field.setNumber(mesophyll_threshold, "DistMax", max)
     #
     inlet_distance = gmsh.model.mesh.field.add("Distance")
-    gmsh.model.mesh.field.setNumbers(inlet_distance, "FacesList", [bottom_area_tag, top_area_tag])
+    gmsh.model.mesh.field.setNumbers(inlet_distance, "FacesList", [bottom_area_tag])
     inlet_threshold = gmsh.model.mesh.field.add("Threshold")
     gmsh.model.mesh.field.setNumber(inlet_threshold, "IField", inlet_distance)
-    gmsh.model.mesh.field.setNumber(inlet_threshold, "LcMin", MINIMUM_RESOLUTION*INLET_BASE_RESOLUTION_FACTOR)
-    gmsh.model.mesh.field.setNumber(inlet_threshold, "LcMax", MAXIMUM_RESOLUTION)
-    gmsh.model.mesh.field.setNumber(inlet_threshold, "DistMin", MINIMUM_DISTANCE)
-    gmsh.model.mesh.field.setNumber(inlet_threshold, "DistMax", MAXIMUM_DISTANCE)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "LcMin", 2*resolution)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "LcMax", 10 * resolution)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "DistMin", minimum)
+    gmsh.model.mesh.field.setNumber(inlet_threshold, "DistMax", max)
     #
     minimum_field = gmsh.model.mesh.field.add("Min")
     gmsh.model.mesh.field.setNumbers(minimum_field, "FieldsList", [mesophyll_threshold, inlet_threshold])
@@ -257,12 +260,9 @@ def main(argv=None):
     #____________________________________________________
     gmsh.model.mesh.generate(3)
     gmsh.write(args.output_path)
-    
     if not args.suppress: 
         print(f"Mesh written to {args.output_path}")
-    
-    if args.open_gui: 
-        gmsh.fltk.run()
+    if args.open_gui: gmsh.fltk.run()
 
     gmsh.finalize()
     if not args.suppress: print("Gmsh finalized")
