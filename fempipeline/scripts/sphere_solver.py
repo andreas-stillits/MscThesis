@@ -16,9 +16,14 @@ Options:
 
 import os
 import argparse
-import numpy as np
+from dolfinx import default_scalar_type
+from dolfinx.fem import (Expression, Function, functionspace,
+                         assemble_scalar, dirichletbc, form, locate_dofs_topological)
+from dolfinx.fem.petsc import LinearProblem
+from dolfinx.mesh import locate_entities_boundary
 from mpi4py import MPI
-import dolfinx 
+from ufl import SpatialCoordinate, TestFunction, TrialFunction, div, dx, grad, inner
+import numpy as np
 
 
 
