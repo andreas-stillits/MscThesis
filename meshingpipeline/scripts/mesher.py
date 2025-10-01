@@ -84,7 +84,7 @@ def main(argv=None):
     if not args.input_brep.lower().endswith(".brep"):
         raise ValueError(f"Input file {args.input_brep} is not a .brep file")
 
-    # set output path
+    # derive output path if not provided
     if args.output_path is None:
         args.output_path = os.path.splitext(args.input_brep)[0] + ".msh"
     elif not args.output_path.lower().endswith(".msh"):
