@@ -126,7 +126,7 @@ def main(argv=None):
     # determine the appropriate dimensions for the cylinder plug
     bottom_surface = (center[0], center[1], bottom_z)
     axis           = (0, 0, height)
-    radius         = (1+args.bm)*max_distance #np.sqrt((size[0]/2)**2 + (size[1]/2)**2)
+    radius         = (1+args.bm)*max_distance
     
     if not args.suppress:
         print(f"Calculated cylinder plug dimensions:")
@@ -175,7 +175,7 @@ def main(argv=None):
 
     if not args.suppress: 
         center, size = get_bbox(airspace)
-        print(f"Applied {iterations} affine transformations to airspace. New center: {center}, New size: {size}")
+        print(f"Applied {iterations} affine transformation(s) to airspace. New center: {center}, New size: {size}")
         print(f"Finished transformations. Assigning physical groups...")
     #____________________________________________________
     
