@@ -10,16 +10,19 @@ Usage:
     --groups: If input is a .msh file, plot physical groups
 
 """
-
+import os
+import argparse 
 import numpy as np 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 import gmsh
 import pyvista as pv 
 from dolfinx.io import gmshio 
 from dolfinx.plot import vtk_mesh
 from mpi4py import MPI
-import open3d as o3d 
-import os
-import argparse 
+import open3d
+
 
 
 
@@ -39,14 +42,14 @@ def main(argv=None):
     if ext == ".npy":
         voxels = np.load(args.input_file)
         points = np.argwhere(voxels > 0)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        o3d.visualization.draw_geometries([pcd])
+        pcd = open3d.geometry.PointCloud()
+        pcd.points = open3d.utility.Vector3dVector(points)
+        open3d.visualization.draw_geometries([pcd])
     #
     elif ext == ".stl":
-        mesh = o3d.io.read_triangle_mesh(args.input_file)
+        mesh = open3d.io.read_triangle_mesh(args.input_file)
         mesh.compute_vertex_normals()  # Compute normals if not present
-        o3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
+        open3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
     #
     elif ext == ".msh":
         if args.groups:

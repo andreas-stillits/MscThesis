@@ -1,0 +1,37 @@
+Log created on 2025-10-03 13:44:53
+Input path:      /home/andreasstillits/coding/MscThesis/meshingpipeline/data/ss/sphere.npy
+Executed script: /home/andreasstillits/coding/MscThesis/meshingpipeline/scripts/breper.py
+Output path:     /home/andreasstillits/coding/MscThesis/meshingpipeline/data/ss/sphere.brep
+Arguments:
+  suppress: True
+  spacing: (1.0, 1.0, 1.0)
+  freecad_cmd: freecadcmd-daily
+  freecad_script: /home/andreasstillits/coding/MscThesis/meshingpipeline/scripts/freecad_converter.py
+  smoothing_iter: 15
+  decimate: 500
+  shrinkage_tolerance: 0.1
+  open_gui: False
+
+----- Begin Log -----
+
+loaded volume shape: (64, 64, 64), spacing: (1.0, 1.0, 1.0)
+Initial triangles = 9560, 
+vertices = 4782, 
+surface area = 3467.60, 
+volume = 17043.17
+Applying 15 Taubin smoothing iterations...
+Decimating mesh to ~500 triangles...
+Post-decimation triangles = 500, 
+vertices = 252, 
+surface area = 3225.96, 
+volume = 17019.97
+Edge manifold: True
+Vertex manifold: True
+Watertight: True
+Saved STL file to data/ss/sphere.stl
+Converting to BRep via FreeCAD to data/ss/sphere.brep ...
+FreeCAD conversion completed successfully.
+Surface area shrinkage: 6.97%
+Volume shrinkage: 0.14%
+
+----- End of Log -----

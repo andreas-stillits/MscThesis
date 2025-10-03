@@ -4,7 +4,7 @@ Convert a voxel representation (3D numpy array .npy) to a BREP file using FreeCA
 
 The FreeCAD conversion is done by writing a temporary Python script 
 that FreeCAD executes in headless mode. The input filename is passed 
-via the environment variable 'INPUT_NPY'.
+via the environment variable 'input_path'.
 
 The code will produce an .stl and a .brep file in the same directory
 as the input .npy file and inherit its file name.
@@ -26,8 +26,13 @@ import os
 import subprocess
 import argparse
 import numpy as np 
-import open3d as o3d
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import open3d
 from skimage import measure
+from reporter import Reporter
+
 
 DEFAULT_FREECAD_CMD = "freecadcmd-daily"
 DEFAULT_FREECAD_SCRIPT = os.path.join(os.path.dirname(__file__), "freecad_converter.py")
@@ -47,123 +52,138 @@ def clean_mesh(mesh):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Convert water tight voxel representation in .npy to CAD model in .brep")
-    p.add_argument("input_npy", type=str, help="Path to the input .npy file containing a 3D array (boolean or 0/1)")
+    p.add_argument("input_path", type=str, help="Path to the input .npy file containing a 3D array (boolean or 0/1)")
+    p.add_argument("--output-path", type=str, default=None, help="Path to output .brep file. If not provided, will use input path with .brep extension")
+    p.add_argument("--suppress", default=False, action="store_true", help="Suppress verbose output")
     p.add_argument("--spacing", type=lambda s: tuple(float(x) for x in s.split(',')), default=(1.0,1.0,1.0), help="voxel spacing sx,sy,sz (default 1.0,1.0,1.0)")
     p.add_argument("--freecad-cmd", default=DEFAULT_FREECAD_CMD, help="Path to the FreeCAD command line tool")
     p.add_argument("--freecad-script", default=DEFAULT_FREECAD_SCRIPT, help=f"Path to a custom FreeCAD conversion script (default assumes script is in the same directory as {__file__})") 
-    p.add_argument("--suppress", default=False, action="store_true", help="Suppress verbose output")
     p.add_argument("--smoothing-iter", type=int, default=DEFAULT_SMOOTHING_ITER, help=f"Number of Taubin smoothing iterations (default {DEFAULT_SMOOTHING_ITER})")
     p.add_argument("--decimate", type=int, default=DEFAULT_DECIMATE, help=f"Target number of triangles after decimation (default {DEFAULT_DECIMATE})")
+    p.add_argument("--shrinkage-tolerance", type=float, default=SHRINKAGE_TOLERANCE, help=f"Maximum allowed surface/volume shrinkage (default {SHRINKAGE_TOLERANCE*100:.1f}%)")
     p.add_argument("--open-gui", default=False, action="store_true", help="Open Open3D visualization window (default: False)")
     args = p.parse_args(argv)
     
     # make sure that the input file exists
-    if not os.path.isfile(args.input_npy):
-        raise FileNotFoundError(f"Input file {args.input_npy} does not exist.")
+    if not os.path.isfile(args.input_path):
+        raise FileNotFoundError(f"Input file {args.input_path} does not exist.")
+    
     # make sure that the input file is .npy
-    if not args.input_npy.lower().endswith(".npy"):
-        raise ValueError(f"Input file {args.input_npy} is not a .npy file.")
+    if not args.input_path.lower().endswith(".npy"):
+        raise ValueError(f"Input file {args.input_path} is not a .npy file.")
+    
+    #  derive output path if not provided
+    if args.output_path is None:
+        args.output_path = os.path.splitext(args.input_path)[0] + ".brep"
+    elif not args.output_path.lower().endswith(".brep"):
+        raise ValueError(f"Output file {args.output_path} is not a .brep file.")
+
+    # initialize reporter
+    reporter = Reporter(args, __file__)
+    reporter.start_log()
 
     # load file
-    voxels = np.load(args.input_npy)
-    print("loaded volume shape:", voxels.shape, 
-                                "spacing:", args.spacing)
+    voxels = np.load(args.input_path)
+    reporter.print(f"loaded volume shape: {voxels.shape}, spacing: {args.spacing}")
 
     # convert to triangular surface mesh using Open3D
     verts, faces, normals, values = measure.marching_cubes(voxels, spacing=args.spacing, level=0.5)
-    mesh = o3d.geometry.TriangleMesh()
-    mesh.vertices = o3d.utility.Vector3dVector(verts)
-    mesh.triangles = o3d.utility.Vector3iVector(faces)
+    mesh = open3d.geometry.TriangleMesh()
+    mesh.vertices = open3d.utility.Vector3dVector(verts)
+    mesh.triangles = open3d.utility.Vector3iVector(faces)
     mesh = clean_mesh(mesh)
     # get surface area and volume
     pre_area = mesh.get_surface_area()
     pre_volume = mesh.get_volume()
-    if not args.suppress: print("Initial triangles=", len(np.asarray(mesh.triangles)), 
-        "vertices=", len(np.asarray(mesh.vertices)), "\n",
-        "surface area={:.2f}".format(pre_area),
-        "volume={:.2f}".format(pre_volume))
+    reporter.print(f"Initial triangles = {len(np.asarray(mesh.triangles))}, ")
+    reporter.print(f"vertices = {len(np.asarray(mesh.vertices))}, ")
+    reporter.print(f"surface area = {pre_area:.2f}, ")
+    reporter.print(f"volume = {pre_volume:.2f}")
 
     # apply smoothing
-    if not args.suppress: print(f"Applying {args.smoothing_iter} Taubin smoothing iterations...")
+    reporter.print(f"Applying {args.smoothing_iter} Taubin smoothing iterations...")
     mesh = mesh.filter_smooth_taubin(number_of_iterations=args.smoothing_iter)
     mesh = clean_mesh(mesh)
 
     # apply mesh decimation
-    if not args.suppress: print(f"Decimating mesh to ~{args.decimate} triangles...")
+    reporter.print(f"Decimating mesh to ~{args.decimate} triangles...")
     current = len(np.asarray(mesh.triangles)) # get current triangle count
     target = args.decimate
     if not target >= current:
         mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=target)
         mesh = clean_mesh(mesh)
-    elif not args.suppress:
-        print(f"Skipping decimation as current triangle count {current} is less than target {target}.")
+    else: 
+        reporter.print(f"Skipping decimation as current triangle count {current} is less than target {target}.")
     post_area = mesh.get_surface_area()
     post_volume = mesh.get_volume()
-    if not args.suppress: print("Post-decimation triangles=", len(np.asarray(mesh.triangles)), 
-                                "vertices=", len(np.asarray(mesh.vertices)), "\n" , 
-                                "surface area={:.2f}".format(post_area),
-                                "volume={:.2f}".format(post_volume))
+    reporter.print(f"Post-decimation triangles = {len(np.asarray(mesh.triangles))}, ")
+    reporter.print(f"vertices = {len(np.asarray(mesh.vertices))}, ")
+    reporter.print(f"surface area = {post_area:.2f}, ")
+    reporter.print(f"volume = {post_volume:.2f}")
 
     # check that mesh is manifold and water tight
     edge_manifold = mesh.is_edge_manifold()
     vertex_manifold = mesh.is_vertex_manifold()
     watertight = mesh.is_watertight()
-    if not args.suppress: print("Mesh manifold:", edge_manifold, vertex_manifold, "\n", 
-                                "Watertight:", watertight)
-    
+    reporter.print(f"Edge manifold: {edge_manifold}")
+    reporter.print(f"Vertex manifold: {vertex_manifold}")
+    reporter.print(f"Watertight: {watertight}")
+
     # abort if these conditions are not met
     if not (edge_manifold and vertex_manifold and watertight):
-        print("Error: Mesh is not manifold and watertight. Cannot convert to BREP.")
+        reporter.print("Error: Mesh is not manifold and watertight. Cannot convert to BREP.")
         # save as .stl for inspection
-        stl_path = os.path.splitext(args.input_npy)[0] + ".stl"
-        written = o3d.io.write_triangle_mesh(stl_path, mesh)
+        stl_path = os.path.splitext(args.output_path)[0] + ".stl"
+        written = open3d.io.write_triangle_mesh(stl_path, mesh)
         if not written:
             raise RuntimeError(f"Failed to write STL file to {stl_path}")
-        print(f"Saved non-manifold mesh as {stl_path} for inspection.")
+        reporter.print(f"Saved non-manifold mesh as {stl_path} for inspection.")
         
     else:
         # given that the mesh is manifold and water tight, save as .stl and proceed to BREP conversion
-        stl_path = os.path.splitext(args.input_npy)[0] + ".stl"
-        written = o3d.io.write_triangle_mesh(stl_path, mesh)
+        stl_path = os.path.splitext(args.output_path)[0] + ".stl"
+        written = open3d.io.write_triangle_mesh(stl_path, mesh)
         if not written:
             raise RuntimeError(f"Failed to write STL file to {stl_path}")
-        if not args.suppress: print(f"Saved STL file to {stl_path}")
+        reporter.print(f"Saved STL file to {stl_path}")
 
         # prepare script for FreeCAD
-        brep_path = os.path.splitext(args.input_npy)[0] + ".brep"
-        if not args.suppress: print(f"Converting to BRep via FreeCAD to {brep_path} ...")
+        reporter.print(f"Converting to BRep via FreeCAD to {args.output_path} ...")
         
         # attempt FreeCAD conversion
 
         # assign environment variables for FreeCAD script
         env = os.environ.copy()
         env['INPUT_STL'] = os.path.abspath(stl_path)
-        env['OUTPUT_BREP'] = os.path.abspath(brep_path)
+        env['OUTPUT_BREP'] = os.path.abspath(args.output_path)
         
         # call FreeCAD in headless mode with the conversion script
         try:
             process = subprocess.run([args.freecad_cmd, args.freecad_script], env=env)
             if process.returncode != 0:
-                print("FreeCAD process failed with return code:", process.returncode)
+                reporter.print("FreeCAD process failed with return code:", process.returncode)
             else:
-                if not args.suppress: print("FreeCAD conversion completed successfully.")
+                reporter.print("FreeCAD conversion completed successfully.")
         except Exception as e:
-            print("Error running FreeCAD command:", e)
+            reporter.print("Error running FreeCAD command:", e)
     # warn if total shrinkage is above tolerance
     surface_shrinkage = abs(post_area - pre_area) / pre_area
     volume_shrinkage = abs(post_volume - pre_volume) / pre_volume
     warned = False
     if surface_shrinkage > SHRINKAGE_TOLERANCE or volume_shrinkage > SHRINKAGE_TOLERANCE:
-        print(f"WARNING: Significant shrinkage detected!\n"
-              f"Surface area shrinkage: {surface_shrinkage*100:.2f}%\n"
-              f"Volume shrinkage: {volume_shrinkage*100:.2f}%\n")
-        print("Consider adjusting smoothing or decimation parameters.")
+        reporter.print(f"WARNING: Significant shrinkage detected!")
+        reporter.print(f"Surface area shrinkage: {surface_shrinkage*100:.2f}%")
+        reporter.print(f"Volume shrinkage: {volume_shrinkage*100:.2f}%")
+        reporter.print("Consider adjusting smoothing or decimation parameters.")
         warned = True
-    if not args.suppress and not warned:
-        print(f"Surface area shrinkage: {surface_shrinkage*100:.2f}%")
-        print(f"Volume shrinkage: {volume_shrinkage*100:.2f}%")
+    if not warned:
+        reporter.print(f"Surface area shrinkage: {surface_shrinkage*100:.2f}%")
+        reporter.print(f"Volume shrinkage: {volume_shrinkage*100:.2f}%")
     if args.open_gui:
-        o3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
+        open3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
+    
+    reporter.close()
+    
     return 0
 
 if __name__ == "__main__":
