@@ -1,0 +1,23 @@
+name: mscthesis
+channels:
+  - conda-forge
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - fenics-dolfinx
+  - mpich
+  - pyvista
+  - ipykernel
+  - matplotlib
+  - numpy
+  - tqdm
+  - ipywidgets
+  - trame
+  - open3d
+  - scikit-image
+  - pip 
+  - pip:
+      - gmsh
+      - -e .
+

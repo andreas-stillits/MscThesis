@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mscthesis"
+version = "1.0.0"
+description = "Carbon fixation 3D FEM code for MSc thesis"
+readme = "README.md"
+requires-python = ">=3.13"
+license = {file = "LICENSE"}
+authors = [{name = "Andreas Stillits", email = "andreas.stillits@nbi.ku.dk"}]
+dependencies = []
+# dependencies are defined in environment.yml instead
+
+# Define console scripts for command-line entry points
+# can be run directly in CLI instead of: $ python -m pkg_name.module.filename
+[project.scripts]
+# cmd-name = "mscthesis.pipeline.modules.filename:main"
+# others ...
+    
+[tool.hatch.build.targets.wheel]
+packages = ["src/mscthesis"]
+
+
