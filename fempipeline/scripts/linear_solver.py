@@ -21,10 +21,11 @@ from dolfinx.fem import (Expression, Function, functionspace,
                          assemble_scalar, dirichletbc, form, locate_dofs_topological)
 from dolfinx.fem.petsc import LinearProblem
 from dolfinx.mesh import locate_entities_boundary
+from dolfinx.io import gmshio
 from mpi4py import MPI
 from ufl import SpatialCoordinate, TestFunction, TrialFunction, div, dx, grad, inner
 import numpy as np
-
+from meshingpipeline.scripts.reporter import Reporter
 
 
 def main(argv=None):
@@ -50,6 +51,21 @@ def main(argv=None):
     elif not args.output_path.lower().endswith(".xdmf"):
         raise ValueError(f"Output file {args.output_path} is not a .xdmf file.")
 
+    # Set master rank
+    rank = 0
+
+    reporter = Reporter(args, __file__)
+    reporter.start_log()
+
+    # Load mesh
+    reporter.print(f"Loading mesh from {args.input_msh}...")
+    mesh, cell_tags, facet_tags = gmshio.read_from_msh(args.input_msh, MPI.COMM_WORLD, rank, gdim=3)
+    reporter.print("Mesh loaded.")
+
+    
+
+
+    reporter.close()
 
     return 0
 
