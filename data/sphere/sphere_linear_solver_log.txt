@@ -1,20 +1,20 @@
-Log created on 2025-10-20 15:53:08
+Log created on 2025-10-20 16:35:56
 Input path:      N/A
-Executed script: /home/andreasstillits/coding/project_template/src/mscthesis/fem/linear_solver.py
-Output path:     /home/andreasstillits/coding/project_template/data/sphere.xdmf
+Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/fem/linear_solver.py
+Output path:     /home/andreasstillits/coding/MscThesis/data/sphere/sphere.xdmf
 Arguments:
-  input_msh: data/sphere.msh
+  input_msh: data/sphere/sphere.msh
   suppress: False
   order: 1
   plot: True
 
 ----- Begin Log -----
 
-Loading mesh from data/sphere.msh...
+Loading mesh from data/sphere/sphere.msh...
 Function space of order 1 created.
 Setting up variational problem...
 Solving linear system...
 Linear system solved.
-Saving solution to data/sphere.xdmf...
+Saving solution to data/sphere/sphere.xdmf...
 
 ----- End of Log -----

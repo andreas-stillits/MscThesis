@@ -16,7 +16,10 @@ dependencies = []
 # Define console scripts for command-line entry points
 # can be run directly in CLI instead of: $ python -m pkg_name.module.filename
 [project.scripts]
-# cmd-name = "mscthesis.pipeline.modules.filename:main"
+msc-inspecter = "mscthesis.utilities.inspecter:main"
+msc-mesher = "mscthesis.meshing.mesher:main"
+msc-breper = "mscthesis.meshing.breper:main"
+msc-linear-solver = "mscthesis.fem.linear_solver:main"
 # others ...
     
 [tool.hatch.build.targets.wheel]
