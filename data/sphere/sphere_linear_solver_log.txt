@@ -1,4 +1,4 @@
-Log created on 2025-10-20 16:35:56
+Log created on 2025-10-20 23:00:45
 Input path:      N/A
 Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/fem/linear_solver.py
 Output path:     /home/andreasstillits/coding/MscThesis/data/sphere/sphere.xdmf
