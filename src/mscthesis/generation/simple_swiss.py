@@ -14,6 +14,7 @@ import argparse
 import numpy as np 
 import numpy.random as r
 from mscthesis.utilities.reporter import Reporter
+import mscthesis.utilities.inspecter as inspecter
 
 SEED = 121
 RESOLUTION = 64
@@ -22,7 +23,7 @@ MIN_RADIUS = 0.05
 MAX_RADIUS = 0.15 # relative to a plug radius of 1.0
 DEPTH = 2.0 # relative to a plug radius of 1.0
 ALLOWED_ATTEMPTS = 1000
-MIN_SPACING = 0.01
+MIN_SPACING = 0.02
 
 
 
@@ -37,6 +38,8 @@ def main(argv=None):
     p.add_argument("--depth", type=float, default=DEPTH, help=f"Depth of plug relative to plug radius of 1.0 (default: {DEPTH})")
     p.add_argument("--allowed-attempts", type=int, default=ALLOWED_ATTEMPTS, help=f"Maximum number of attempts to place spheres (default: {ALLOWED_ATTEMPTS})")
     p.add_argument("--min-spacing", type=float, default=MIN_SPACING, help=f"Minimum spacing between spheres (default: {MIN_SPACING})")
+    p.add_argument("--suppress", default=False, action="store_true", help="Suppress console output")
+    p.add_argument("--plot", default=False, action="store_true", help="Plot the generated geometry with open3d")
     args = p.parse_args(argv)
 
     # check output_path has .npy extension
