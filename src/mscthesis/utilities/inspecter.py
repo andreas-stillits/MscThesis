@@ -25,13 +25,8 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import open3d
 
-
-def main(argv=None):
-    p = argparse.ArgumentParser(description="Quick plot of a mesh-related datafile")
-    p.add_argument("input_path", type=str, help="Path to input mesh file (.npy, .stl, .msh)")
-    p.add_argument("--groups", default=False, action="store_true", help="If input is a .msh file, plot physical groups")
-    args = p.parse_args(argv)
-
+def inspect(args: argparse.Namespace):
+    """ Quick plot of a datafile """
     # check if file exists
     if not os.path.isfile(args.input_path):
         raise FileNotFoundError(f"Input file {args.input_path} not found")
@@ -79,6 +74,18 @@ def main(argv=None):
             gmsh.fltk.run()
             gmsh.finalize()
 
+
+def parse_args(argv=None):
+    """ Parse command line arguments """
+    p = argparse.ArgumentParser(description="Quick plot of a mesh-related datafile")
+    p.add_argument("input_path", type=str, help="Path to input mesh file (.npy, .stl, .msh)")
+    p.add_argument("--groups", default=False, action="store_true", help="If input is a .msh file, plot physical groups")
+    return p.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    inspect(args)
     return 0
 
 

@@ -93,6 +93,10 @@ def main(argv=None):
     reporter.print(f"Saving geometry to {args.output_path}...  ")
     np.save(args.output_path, voxels)
 
+    # plot using the inspecter utility
+    if args.plot:
+        inspecter.main([args.output_path])
+
     reporter.end_log()
     return 0
 
