@@ -1,0 +1,19 @@
+Log created on 2025-10-21 13:50:10
+Input path:      /home/andreasstillits/coding/MscThesis/data/swiss/test.msh
+Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/fem/linear_solver.py
+Output path:     /home/andreasstillits/coding/MscThesis/data/swiss/test.xdmf
+Arguments:
+  suppress: False
+  order: 1
+  plot: True
+
+----- Begin Log -----
+
+Loading mesh from data/swiss/test.msh...
+Function space of order 1 created.
+Setting up variational problem...
+Solving linear system...
+Linear system solved.
+Saving solution to data/swiss/test.xdmf...
+
+----- End of Log -----

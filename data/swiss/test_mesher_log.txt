@@ -1,0 +1,37 @@
+Log created on 2025-10-21 13:46:13
+Input path:      /home/andreasstillits/coding/MscThesis/data/swiss/test.brep
+Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/meshing/mesher.py
+Output path:     /home/andreasstillits/coding/MscThesis/data/swiss/test.msh
+Arguments:
+  suppress: False
+  suppress_gmsh: True
+  bm: 0.05
+  scm: 0.2
+  tolerance: 0.01
+  mesh_scale: 1.0
+  min_resolution: 0.02
+  max_resolution: 0.2
+  min_distance: 0.05
+  max_distance: 0.2
+  inlet_base_resolution_factor: 2.0
+  open_gui: True
+
+----- Begin Log -----
+
+Imported tissue geometry from data/swiss/test.brep
+Identified maximum radial distance in xy-plane: 29.292
+Calculated cylinder plug dimensions:
+  bottom_surface: (np.float64(-1.7763568394002505e-15), np.float64(1.7763568394002505e-15), np.float64(-18.77096133232116))
+  axis:           (0, 0, np.float64(33.51957380771636))
+  radius:         30.757
+Created airspace by boolean cutting cylinder from tissue, resulting in # 62 volume(s)
+Retained largest volume as airspace: [(3, 1)]
+Applied 1 affine transformation(s) to airspace. New center: [ 1.30883068e-04 -9.74531929e-06  5.00000000e-01], New size: [1.83490572 1.83507962 1.        ]
+Finished transformations. Assigning physical groups...
+10003 surfaces found
+Curved area found, relative error: 0.002779
+Physical groups assigned. Proceeding to mesh generation...
+Mesh written to data/swiss/test.msh
+Gmsh finalized
+
+----- End of Log -----

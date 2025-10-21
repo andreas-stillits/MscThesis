@@ -78,27 +78,6 @@ def main(argv=None):
             gmsh.merge(args.input_path)
             gmsh.fltk.run()
             gmsh.finalize()
-    elif ext == ".xdmf":
-        pass
-        # load mesh and solution from xdmf file
-        # with XDMFFile(MPI.COMM_WORLD, args.input_path, "r") as xdmf:
-        #     mesh = xdmf.read_mesh(name="mesh")
-        #     V = fem.functionspace(mesh, ("Lagrange", 1))
-        #     uh = fem.Function(V)
-        #     xdmf.read_function(uh, name="solution")
-
-        # # visualize with pyvista
-        # topology, cell_types, geometry = vtk_mesh(mesh, mesh.topology.dim)
-        # grid = pv.UnstructuredGrid(topology, cell_types, geometry)
-        # grid.point_data["uh"] = uh.x.array.real
-
-        # xmin, xmax, ymin, ymax, zmin, zmax = grid.bounds
-        # slices = grid.slice_orthogonal(x=(xmin+xmax)/2, y=(ymin+ymax)/2, z=(zmin+zmax)/2)
-        # p = pv.Plotter()
-        # p.add_mesh(slices, scalars="uh", cmap="viridis", clim=[0, np.max(uh.x.array.real)])
-        # p.add_mesh(grid.outline(), color="k")
-        # p.show_axes()
-        # p.show()
 
     return 0
 
