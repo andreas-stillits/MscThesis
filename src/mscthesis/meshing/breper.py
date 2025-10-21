@@ -32,6 +32,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import open3d
 from skimage import measure
 from mscthesis.utilities.reporter import Reporter
+from mscthesis.utilities.checker import check_io_paths
 
 
 DEFAULT_FREECAD_CMD = "freecadcmd-daily"
@@ -60,23 +61,12 @@ def main(argv=None):
     p.add_argument("--freecad-script", default=DEFAULT_FREECAD_SCRIPT, help=f"Path to a custom FreeCAD conversion script (default assumes script is in the same directory as {__file__})") 
     p.add_argument("--smoothing-iter", type=int, default=DEFAULT_SMOOTHING_ITER, help=f"Number of Taubin smoothing iterations (default {DEFAULT_SMOOTHING_ITER})")
     p.add_argument("--decimate", type=int, default=DEFAULT_DECIMATE, help=f"Target number of triangles after decimation (default {DEFAULT_DECIMATE})")
-    p.add_argument("--shrinkage-tolerance", type=float, default=SHRINKAGE_TOLERANCE, help=f"Maximum allowed surface/volume shrinkage (default {SHRINKAGE_TOLERANCE*100:.1f}%)")
+    p.add_argument("--shrinkage-tolerance", type=float, default=SHRINKAGE_TOLERANCE, help=f"Maximum allowed surface/volume shrinkage (default {100 * SHRINKAGE_TOLERANCE:.1f} %%)") # 2 percent signs do to argparse formatting standards. Will read as one
     p.add_argument("--open-gui", default=False, action="store_true", help="Open Open3D visualization window (default: False)")
     args = p.parse_args(argv)
     
-    # make sure that the input file exists
-    if not os.path.isfile(args.input_path):
-        raise FileNotFoundError(f"Input file {args.input_path} does not exist.")
-    
-    # make sure that the input file is .npy
-    if not args.input_path.lower().endswith(".npy"):
-        raise ValueError(f"Input file {args.input_path} is not a .npy file.")
-    
-    #  derive output path if not provided
-    if args.output_path is None:
-        args.output_path = os.path.splitext(args.input_path)[0] + ".brep"
-    elif not args.output_path.lower().endswith(".brep"):
-        raise ValueError(f"Output file {args.output_path} is not a .brep file.")
+    # check if input file exists, has right extension and check/derive output path
+    check_io_paths(args, ".npy", ".brep")
 
     # initialize reporter
     reporter = Reporter(args, __file__)
@@ -171,7 +161,7 @@ def main(argv=None):
     volume_shrinkage = abs(post_volume - pre_volume) / pre_volume
     warned = False
     if surface_shrinkage > SHRINKAGE_TOLERANCE or volume_shrinkage > SHRINKAGE_TOLERANCE:
-        reporter.print(f"WARNING: Significant shrinkage detected!")
+        reporter.print("WARNING: Significant shrinkage detected!")
         reporter.print(f"Surface area shrinkage: {surface_shrinkage*100:.2f}%")
         reporter.print(f"Volume shrinkage: {volume_shrinkage*100:.2f}%")
         reporter.print("Consider adjusting smoothing or decimation parameters.")
@@ -182,7 +172,7 @@ def main(argv=None):
     if args.open_gui:
         open3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
     
-    reporter.close()
+    reporter.end_log()
     
     return 0
 

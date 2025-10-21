@@ -1,5 +1,6 @@
 """ 
 reporter.py
+
 Class for managing printing and logging within the meshing pipeline.
 The Reporter will log date, time, I/O, executing script path, all variables,
 and printed messages to a log file, and optionally
@@ -16,18 +17,18 @@ Usage:
     reporter.print("...") as you would usually print
     
     ________________
-    reporter.close()
+    reporter.end_log()
 
 OBS: args must have attributes 'input_path', and 'output_path'.
     
 """
 
 import os 
-from argparse import Namespace 
+import argparse
 from datetime import datetime
 
 class Reporter:
-    def __init__(self, args: Namespace, parent: str):
+    def __init__(self, args: argparse.Namespace, parent: str):
         self.log_path = args.output_path if hasattr(args, 'output_path') else "default_reporter.txt"
         self.log_path = os.path.splitext(self.log_path)[0] # remove extension if any
         self.log_path += "_" + os.path.splitext(os.path.basename(parent))[0] + "_log.txt"
@@ -71,7 +72,7 @@ class Reporter:
             self.log_file.write(message + '\n')
             self.log_file.flush() # forces to main memory immediately
 
-    def close(self):
+    def end_log(self):
         if self.log_file:
             self.log_file.write("\n----- End of Log -----\n")
             self.log_file.flush()

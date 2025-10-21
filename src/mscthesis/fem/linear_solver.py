@@ -18,7 +18,6 @@ import os
 import argparse
 from mpi4py import MPI
 from petsc4py import PETSc
-import numpy as np 
 import pyvista as pv
 
 import ufl 
@@ -26,6 +25,7 @@ from dolfinx import fem, plot
 from dolfinx.fem.petsc import LinearProblem
 from dolfinx.io import gmshio, XDMFFile 
 from mscthesis.utilities.reporter import Reporter
+from mscthesis.utilities.checker import check_io_paths
 
 ORDER = 1 # Default finite element order
 DIFFUSIVITY = 0.1
@@ -40,39 +40,28 @@ COMPENSATION_POINT = 0.1
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Solve a PDE on a sphere mesh using FEniCSx.")
-    p.add_argument("input_msh", type=str, help="Input mesh file in .msh format")
+    p.add_argument("input_path", type=str, help="Input mesh file in .msh format")
     p.add_argument("--suppress", default=False, action="store_true", help="Suppress output messages")
     p.add_argument("--order", type=int, default=ORDER, help=f"Finite element order (default: {ORDER})")
     p.add_argument("--output-path", type=str, default=None, help="Output path for solution. If not provided, will use input path with .xdmf extension.")
     p.add_argument("--plot", default=False, action="store_true", help="Plot the solution using pyvista")
     args = p.parse_args(argv)
     
-    # check if input file exists
-    if not os.path.isfile(args.input_msh):
-        raise FileNotFoundError(f"Input file {args.input_msh} does not exist.")
-
-    # check if .msh format
-    if not args.input_msh.lower().endswith(".msh"):
-        raise ValueError(f"Input file {args.input_msh} is not a .msh file.")
-    
-    # derive output path if not provided
-    if args.output_path is None:
-        args.output_path = os.path.splitext(args.input_msh)[0] + ".xdmf"
-    elif not args.output_path.lower().endswith(".xdmf"):
-        raise ValueError(f"Output file {args.output_path} is not a .xdmf file.")
+    # check if input file exists, has right extension and check/derive output path
+    check_io_paths(args, ".msh", ".xdmf")
 
     reporter = Reporter(args, __file__)
     reporter.start_log()
 
     # Load mesh
-    reporter.print(f"Loading mesh from {args.input_msh}...")
-    mesh, cell_tags, facet_tags = gmshio.read_from_msh(args.input_msh, MPI.COMM_WORLD, 0, gdim=3)
+    reporter.print(f"Loading mesh from {args.input_path}...")
+    mesh, cell_tags, facet_tags = gmshio.read_from_msh(args.input_path, MPI.COMM_WORLD, 0, gdim=3)
     
     # tags for physical groups
     AIRSPACE_VOLUME_TAG = 1 
-    TOP_SURFACE_TAG = 2
+    # TOP_SURFACE_TAG = 2
     BOTTOM_SURFACE_TAG = 3
-    CURVED_SURFACE_TAG = 4
+    # CURVED_SURFACE_TAG = 4
     MESOPHYLL_SURFACE_TAG = 5
 
     # define function space
@@ -115,6 +104,7 @@ def main(argv=None):
     reporter.print(f"Saving solution to {args.output_path}...")
     with XDMFFile(MPI.COMM_WORLD, args.output_path, "w") as xdmf:
         xdmf.write_mesh(mesh)
+        uh.name = "solution"
         xdmf.write_function(uh)
 
     if args.plot and MPI.COMM_WORLD.rank == 0:
@@ -130,7 +120,7 @@ def main(argv=None):
         p.show_axes()
         p.show()
 
-    reporter.close()
+    reporter.end_log()
 
     return 0
 

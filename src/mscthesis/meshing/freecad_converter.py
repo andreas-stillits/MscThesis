@@ -4,8 +4,10 @@ Converts STL files to BRep format using FreeCAD's Python API.
 """
 
 
-import os, sys
-import Mesh, Part 
+import os
+import sys
+import Mesh
+import Part 
 
 def stl_to_brep(stl_path: str, brep_path: str, tolerance: float = 0.05):
     if not os.path.isfile(stl_path):

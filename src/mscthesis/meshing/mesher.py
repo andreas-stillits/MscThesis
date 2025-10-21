@@ -22,6 +22,7 @@ import argparse
 import numpy as np 
 import gmsh 
 from mscthesis.utilities.reporter import Reporter
+from mscthesis.utilities.checker import check_io_paths
 
 # set namespace
 kernel = gmsh.model.occ
@@ -84,19 +85,8 @@ def main(argv=None):
     p.add_argument("--open-gui", default=False, action="store_true", help="Open the Gmsh GUI to visualize the mesh after generation")    
     args = p.parse_args(argv)
     
-    # check if input file exists
-    if not os.path.isfile(args.input_path):
-        raise FileNotFoundError(f"Input file {args.input_path} does not exist")
-
-    # check if input file is .brep
-    if not args.input_path.lower().endswith(".brep"):
-        raise ValueError(f"Input file {args.input_path} is not a .brep file")
-
-    # derive output path if not provided
-    if args.output_path is None:
-        args.output_path = os.path.splitext(args.input_path)[0] + ".msh"
-    elif not args.output_path.lower().endswith(".msh"):
-        raise ValueError(f"Output file {args.output_path} is not a .msh file")
+    # check if input file exists, has right extension and check/derive output path
+    check_io_paths(args, ".brep", ".msh")
     
     # initialize reporter
     reporter = Reporter(args, __file__)
@@ -138,7 +128,7 @@ def main(argv=None):
     axis           = (0, 0, height)
     radius         = (1+args.bm)*max_distance
 
-    reporter.print(f"Calculated cylinder plug dimensions:")
+    reporter.print("Calculated cylinder plug dimensions:")
     reporter.print(f"  bottom_surface: {bottom_surface}")
     reporter.print(f"  axis:           {axis}")
     reporter.print(f"  radius:         {radius:.3f}")
@@ -172,19 +162,25 @@ def main(argv=None):
     reporter.print(f"Retained largest volume as airspace: {airspace}")
 
     # Iteratively apply affine transformation to airspace to center bottom surface at origin and scale height to 1
-    transformation = lambda center, size, target_size: [
-        (target_size / size[2]), 0, 0, - center[0]           *(target_size / size[2]),
-        0, (target_size / size[2]), 0, - center[1]           *(target_size / size[2]),
-        0, 0, (target_size / size[2]), -(center[2]-size[2]/2)*(target_size / size[2]),
-        0, 0, 0, 1
-    ]
-    error      = lambda center, size, target_size: (size[2] - target_size)/target_size
+    def transformation(center: tuple[float, float, float], size: tuple[float, float, float], target_size: float) -> list[float]:
+        """ Generate affine transformation matrix to scale and translate entity """
+        return [
+            (target_size / size[2]), 0, 0, - center[0]           *(target_size / size[2]),
+            0, (target_size / size[2]), 0, - center[1]           *(target_size / size[2]),
+            0, 0, (target_size / size[2]), -(center[2]-size[2]/2)*(target_size / size[2]),
+            0, 0, 0, 1
+        ]
+
+    def error(center: tuple[float, float, float], size: tuple[float, float, float], target_size: float) -> float:
+        """ Calculate relative error in height """
+        return (size[2] - target_size)/target_size
+
     iterations = iterative_affine_transformation(airspace, transformation, error, max_iterations=5, target_size=1.0)
 
     if not args.suppress: 
         center, size = get_bbox(airspace)
         reporter.print(f"Applied {iterations} affine transformation(s) to airspace. New center: {center}, New size: {size}")
-        reporter.print(f"Finished transformations. Assigning physical groups...")
+        reporter.print("Finished transformations. Assigning physical groups...")
     #____________________________________________________
     
     # Assign Physical Groups
@@ -214,11 +210,12 @@ def main(argv=None):
     gmsh.model.addPhysicalGroup(3, [tag for dim, tag in airspace], 1, name="airspace")
     # surfaces
     surfaces = gmsh.model.getEntities(dim=2)
-    if not args.suppress: print(len(surfaces), "surfaces found")
+    reporter.print(f"{len(surfaces)} surfaces found")
+    
     mesophyll_surface_tags = []
     for dim, tag in surfaces:
         com = gmsh.model.occ.getCenterOfMass(dim, tag)
-        if np.isclose(com[2], 1.0):
+        if np.isclose(com[2], 1.0): 
             # top surface
             gmsh.model.addPhysicalGroup(2, [tag], 2, name="top_surface")
             top_area_tag = tag
@@ -229,13 +226,15 @@ def main(argv=None):
         elif iscurved(tag):
             # curved surface of cylinder
             gmsh.model.addPhysicalGroup(2, [tag], 4, name="curved_surface")
-            curved_area_tag = tag
         else:
             # other surfaces
             mesophyll_surface_tags.append(tag)
     gmsh.model.addPhysicalGroup(2, mesophyll_surface_tags, 5, name="mesophyll_surfaces")
+    
     assert len(curved_area_found) == 1, f"Error identifying curved face of cylinder. Found {len(curved_area_found)} curved faces with relative errors from target: {[area/curved_area_target - 1 for area in curved_area_found]}"
+    
     reporter.print("Physical groups assigned. Proceeding to mesh generation...")
+    
     assert top_area_tag is not None and bottom_area_tag is not None, "Error identifying top or bottom surface of cylinder"
     #____________________________________________________
     # Specify mesh size fields
@@ -272,7 +271,7 @@ def main(argv=None):
 
     gmsh.finalize()
     reporter.print("Gmsh finalized")
-    reporter.close()
+    reporter.end_log()
     
     return 0
 

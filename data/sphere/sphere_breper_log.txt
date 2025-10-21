@@ -1,16 +1,16 @@
-Log created on 2025-10-20 15:48:39
-Input path:      /home/andreasstillits/coding/project_template/data/sphere.npy
-Executed script: /home/andreasstillits/coding/project_template/src/mscthesis/meshing/breper.py
-Output path:     /home/andreasstillits/coding/project_template/data/sphere.brep
+Log created on 2025-10-21 10:27:00
+Input path:      /home/andreasstillits/coding/MscThesis/data/sphere/sphere.npy
+Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/meshing/breper.py
+Output path:     /home/andreasstillits/coding/MscThesis/data/sphere/sphere.brep
 Arguments:
   suppress: False
   spacing: (1.0, 1.0, 1.0)
   freecad_cmd: freecadcmd-daily
-  freecad_script: /home/andreasstillits/coding/project_template/src/mscthesis/meshing/freecad_converter.py
+  freecad_script: /home/andreasstillits/coding/MscThesis/src/mscthesis/meshing/freecad_converter.py
   smoothing_iter: 15
-  decimate: 250
+  decimate: 10000
   shrinkage_tolerance: 0.1
-  open_gui: True
+  open_gui: False
 
 ----- Begin Log -----
 
@@ -20,18 +20,19 @@ vertices = 4782,
 surface area = 3467.60, 
 volume = 17043.17
 Applying 15 Taubin smoothing iterations...
-Decimating mesh to ~250 triangles...
-Post-decimation triangles = 250, 
-vertices = 127, 
-surface area = 3210.44, 
-volume = 16865.69
+Decimating mesh to ~10000 triangles...
+Skipping decimation as current triangle count 9560 is less than target 10000.
+Post-decimation triangles = 9560, 
+vertices = 4782, 
+surface area = 3229.96, 
+volume = 17073.48
 Edge manifold: True
 Vertex manifold: True
 Watertight: True
-Saved STL file to data/sphere.stl
-Converting to BRep via FreeCAD to data/sphere.brep ...
+Saved STL file to data/sphere/sphere.stl
+Converting to BRep via FreeCAD to data/sphere/sphere.brep ...
 FreeCAD conversion completed successfully.
-Surface area shrinkage: 7.42%
-Volume shrinkage: 1.04%
+Surface area shrinkage: 6.85%
+Volume shrinkage: 0.18%
 
 ----- End of Log -----
