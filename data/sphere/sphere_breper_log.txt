@@ -1,4 +1,4 @@
-Log created on 2025-10-21 10:27:00
+Log created on 2025-10-21 14:36:51
 Input path:      /home/andreasstillits/coding/MscThesis/data/sphere/sphere.npy
 Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/meshing/breper.py
 Output path:     /home/andreasstillits/coding/MscThesis/data/sphere/sphere.brep
@@ -34,5 +34,7 @@ Converting to BRep via FreeCAD to data/sphere/sphere.brep ...
 FreeCAD conversion completed successfully.
 Surface area shrinkage: 6.85%
 Volume shrinkage: 0.18%
+
+Total elapsed time: 2.735 seconds
 
 ----- End of Log -----

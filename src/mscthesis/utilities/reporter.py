@@ -26,6 +26,7 @@ OBS: args must have attributes 'input_path', and 'output_path'.
 import os 
 import argparse
 from datetime import datetime
+import time
 
 class Reporter:
     def __init__(self, args: argparse.Namespace, parent: str):
@@ -34,6 +35,8 @@ class Reporter:
         self.log_path += "_" + os.path.splitext(os.path.basename(parent))[0] + "_log.txt"
         self.args = args
         self.parent = parent
+        self.start_time = None 
+        self.end_time = None
         self.suppress_console_output = args.suppress if hasattr(args, 'suppress') else False
         if self.log_path:
             dir_name = os.path.dirname(self.log_path) # get full directory path
@@ -45,6 +48,8 @@ class Reporter:
         
     def start_log(self):
         if self.log_file and self.args:
+            # record start time
+            self.start_time = time.perf_counter()
             # write the date and time to the log file
             self.log_file.write(f"Log created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             # write the input path to the log file - insert some tabulation for readability
@@ -74,6 +79,12 @@ class Reporter:
 
     def end_log(self):
         if self.log_file:
+            # record end time
+            self.end_time = time.perf_counter()
+            elapsed_time = self.end_time - self.start_time if self.start_time else 0.0
+            msg = f"\nTotal elapsed time: {elapsed_time:.3f} seconds\n"
+            print(msg)
+            self.log_file.write(msg)
             self.log_file.write("\n----- End of Log -----\n")
             self.log_file.flush()
             self.log_file.close()
