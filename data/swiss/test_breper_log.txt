@@ -1,4 +1,4 @@
-Log created on 2025-10-21 14:41:51
+Log created on 2025-10-21 15:32:46
 Input path:      /home/andreasstillits/coding/MscThesis/data/swiss/test.npy
 Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/meshing/breper.py
 Output path:     /home/andreasstillits/coding/MscThesis/data/swiss/test.brep
@@ -10,30 +10,30 @@ Arguments:
   smoothing_iter: 15
   decimate: 10000
   shrinkage_tolerance: 0.1
-  open_gui: False
+  open_gui: True
 
 ----- Begin Log -----
 
-loaded volume shape: (256, 256, 256), spacing: (1.0, 1.0, 1.0)
-Initial triangles = 107176, 
-vertices = 53628, 
-surface area = 38832.95, 
-volume = 164361.88
+loaded volume shape: (64, 64, 64), spacing: (1.0, 1.0, 1.0)
+Initial triangles = 32872, 
+vertices = 16630, 
+surface area = 11805.69, 
+volume = 12306.67
 Applying 15 Taubin smoothing iterations...
 Decimating mesh to ~10000 triangles...
 Post-decimation triangles = 10000, 
-vertices = 5040, 
-surface area = 36025.26, 
-volume = 164327.56
+vertices = 5194, 
+surface area = 11040.84, 
+volume = 12337.51
 Edge manifold: True
 Vertex manifold: True
 Watertight: True
 Saved STL file to data/swiss/test.stl
 Converting to BRep via FreeCAD to data/swiss/test.brep ...
 FreeCAD conversion completed successfully.
-Surface area shrinkage: 7.23%
-Volume shrinkage: 0.02%
+Surface area shrinkage: 6.48%
+Volume shrinkage: 0.25%
 
-Total elapsed time: 28.284 seconds
+Total elapsed time: 4.418 seconds
 
 ----- End of Log -----

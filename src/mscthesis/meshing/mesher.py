@@ -265,14 +265,13 @@ def main(argv=None):
     gmsh.write(args.output_path)
 
     reporter.print(f"Mesh written to {args.output_path}")
-    
+    reporter.end_log()
+
     if args.open_gui: 
         gmsh.fltk.run()
 
     gmsh.finalize()
-    reporter.print("Gmsh finalized")
-    reporter.end_log()
-    
+        
     return 0
 
 

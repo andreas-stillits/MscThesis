@@ -69,11 +69,11 @@ def main(argv=None):
     for _ in range(args.n_spheres):
         attempts = 0
         while attempts < args.allowed_attempts:
-            center = (r.uniform(-max_xy, max_xy), 
+            center = np.array([r.uniform(-max_xy, max_xy), 
                       r.uniform(-max_xy, max_xy), 
-                      r.uniform(min_z, max_z))
+                      r.uniform(min_z, max_z)])
             radius = r.uniform(args.min_radius, args.max_radius)
-            if all(np.linalg.norm(np.array(center) - np.array(cen)) > (radius + rad + args.min_spacing) for cen, rad in zip(centers, radii)) and np.linalg.norm(np.array(center)) <= max_xy:
+            if all(np.linalg.norm(center - cen) > (radius + rad + args.min_spacing) for cen, rad in zip(centers, radii)) and np.linalg.norm(center[:2]) <= max_xy:
                 centers.append(center)
                 radii.append(radius)
                 break
@@ -93,11 +93,12 @@ def main(argv=None):
     reporter.print(f"Saving geometry to {args.output_path}...  ")
     np.save(args.output_path, voxels)
 
+    reporter.end_log()
+
     # plot using the inspecter utility
     if args.plot:
         inspecter.main([args.output_path])
 
-    reporter.end_log()
     return 0
 
 

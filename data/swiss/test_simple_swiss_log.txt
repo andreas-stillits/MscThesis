@@ -1,11 +1,11 @@
-Log created on 2025-10-21 15:07:41
+Log created on 2025-10-21 15:29:43
 Input path:      N/A
 Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/generation/simple_swiss.py
 Output path:     /home/andreasstillits/coding/MscThesis/data/swiss/test.npy
 Arguments:
   seed: 121
   resolution: 64
-  n_spheres: 10
+  n_spheres: 100
   min_radius: 0.05
   max_radius: 0.15
   depth: 2.0
@@ -16,11 +16,11 @@ Arguments:
 
 ----- Begin Log -----
 
-Generating swiss cheese geometry with approximately 10 spheres...  
+Generating swiss cheese geometry with approximately 100 spheres...  
 Attempting to place spheres...  
-Successfully packed 10 spheres.
+Successfully packed 100 spheres.
 Saving geometry to data/swiss/test.npy...  
 
-Total elapsed time: 8.161 seconds
+Total elapsed time: 0.108 seconds
 
 ----- End of Log -----

@@ -1,11 +1,11 @@
-Log created on 2025-10-21 13:50:10
+Log created on 2025-10-21 15:45:03
 Input path:      /home/andreasstillits/coding/MscThesis/data/swiss/test.msh
 Executed script: /home/andreasstillits/coding/MscThesis/src/mscthesis/fem/linear_solver.py
 Output path:     /home/andreasstillits/coding/MscThesis/data/swiss/test.xdmf
 Arguments:
   suppress: False
   order: 1
-  plot: True
+  plot: False
 
 ----- Begin Log -----
 
@@ -15,5 +15,7 @@ Setting up variational problem...
 Solving linear system...
 Linear system solved.
 Saving solution to data/swiss/test.xdmf...
+
+Total elapsed time: 166.283 seconds
 
 ----- End of Log -----

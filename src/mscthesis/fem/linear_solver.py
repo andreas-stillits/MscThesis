@@ -107,6 +107,8 @@ def main(argv=None):
         uh.name = "solution"
         xdmf.write_function(uh)
 
+    reporter.end_log()
+
     if args.plot and MPI.COMM_WORLD.rank == 0:
         topology, cell_types, geometry = plot.vtk_mesh(mesh, mesh.topology.dim)
         grid = pv.UnstructuredGrid(topology, cell_types, geometry)
@@ -119,8 +121,6 @@ def main(argv=None):
         p.add_mesh(grid.outline(), color="k")
         p.show_axes()
         p.show()
-
-    reporter.end_log()
 
     return 0
 

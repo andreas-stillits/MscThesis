@@ -169,10 +169,11 @@ def main(argv=None):
     if not warned:
         reporter.print(f"Surface area shrinkage: {surface_shrinkage*100:.2f}%")
         reporter.print(f"Volume shrinkage: {volume_shrinkage*100:.2f}%")
-    if args.open_gui:
-        open3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
     
     reporter.end_log()
+    
+    if args.open_gui:
+        open3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
     
     return 0
 
