@@ -19,5 +19,5 @@ dependencies:
   - pip 
   - pip:
       - gmsh
-      - -e .
+      - -e .[dev]
 

@@ -7,7 +7,7 @@ Converts STL files to BRep format using FreeCAD's Python API.
 import os, sys
 import Mesh, Part 
 
-def stl_to_brep(stl_path, brep_path, tolerance=0.05):
+def stl_to_brep(stl_path: str, brep_path: str, tolerance: float = 0.05):
     if not os.path.isfile(stl_path):
         raise FileNotFoundError(f"Input STL not found: {stl_path}")
     mesh = Mesh.Mesh(stl_path)

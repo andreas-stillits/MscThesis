@@ -36,7 +36,7 @@ MINIMUM_DISTANCE   = 0.05
 MAXIMUM_DISTANCE   = 0.2
 INLET_BASE_RESOLUTION_FACTOR = 2.0
 
-def iterative_affine_transformation(entity, transformation, error, max_iterations=5, tolerance=1e-6, target_size=1.0):
+def iterative_affine_transformation(entity: list[tuple[int, int]], transformation: callable, error: callable, max_iterations: int = 5, tolerance: float = 1e-6, target_size: float =1.0):
     """ 
     Iteratively apply an affine transformation to an entity until the error is below the tolerance
     """
@@ -53,7 +53,7 @@ def iterative_affine_transformation(entity, transformation, error, max_iteration
     return count
 
 
-def get_bbox(entity):
+def get_bbox(entity: list[tuple[int, int]]):
     """
     Get bounding box of a given entity
     entity: [(dim, tag)]

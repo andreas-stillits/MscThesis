@@ -40,3 +40,7 @@ Create a virtual environment with:
 
 This installs dependencies and the package contained in this repository
 The "pip install -e ." is responsible of the package install when run in the directory containing our .toml file. The -e flag makes sure that we dont need to re-install every time we update the source code - they are linked instead of copied. Another installation is only needed if we create a new virtual environment.
+
+Adding "pip install -e .[dev]" installs optional libraries ruff and mypy.
+ruff: checks formatting issues and auto formats
+mypy: checks that declared variable types in functions are actually passed as such by all callers. (without running the code)

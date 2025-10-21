@@ -25,4 +25,6 @@ msc-linear-solver = "mscthesis.fem.linear_solver:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/mscthesis"]
 
+[project.optional-dependencies]
+dev = ["ruff", "mypy"]
 
