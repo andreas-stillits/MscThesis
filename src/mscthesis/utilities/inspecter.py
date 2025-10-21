@@ -25,7 +25,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import open3d
 
-def inspect(args: argparse.Namespace):
+def inspecter(args: argparse.Namespace):
     """ Quick plot of a datafile """
     # check if file exists
     if not os.path.isfile(args.input_path):
@@ -85,7 +85,7 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
-    inspect(args)
+    inspecter(args)
     return 0
 
 

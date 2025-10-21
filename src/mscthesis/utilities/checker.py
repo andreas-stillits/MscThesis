@@ -1,5 +1,5 @@
 """  
-input_checker.py
+checker.py
 
 Standard snippet to check:
 - if a file exists
@@ -7,9 +7,9 @@ Standard snippet to check:
 - derive output path if not provided
 
 Usage:
-    from mscthesis.utilities.input_checker import check_input_output_paths
+    from mscthesis.utilities.checker import check_io_paths
 
-    check_io_paths(args, target_extension)
+    check_io_paths(args, ".abc", ".xyz")
 
 """
 
