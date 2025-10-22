@@ -103,8 +103,8 @@ def main(argv=None):
     # Save solution to .bp
     reporter.print(f"Saving solution to {args.output_path}...")
     a4x.write_mesh(args.output_path, mesh)
-    a4x.write_meshtags(args.output_path, mesh, cell_tags)
-    a4x.write_meshtags(args.output_path, mesh, facet_tags)
+    a4x.write_meshtags(args.output_path, mesh, cell_tags, meshtag_name="cell_tags")
+    a4x.write_meshtags(args.output_path, mesh, facet_tags, meshtag_name="facet_tags")
     a4x.write_function(args.output_path, uh, name="solution")
 
     reporter.end_log()

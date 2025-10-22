@@ -16,10 +16,10 @@ import numpy as np
 import gmsh
 import pyvista as pv 
 from dolfinx import fem
-from dolfinx.io import XDMFFile
 from dolfinx.io import gmshio
 from dolfinx.plot import vtk_mesh
 from mpi4py import MPI 
+import adios4dolfinx as a4x
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -28,7 +28,7 @@ import open3d
 def inspecter(args: argparse.Namespace):
     """ Quick plot of a datafile """
     # check if file exists
-    if not os.path.isfile(args.input_path):
+    if not os.path.exists(args.input_path):
         raise FileNotFoundError(f"Input file {args.input_path} not found")
     
     # Branch according to file extension
@@ -73,7 +73,27 @@ def inspecter(args: argparse.Namespace):
             gmsh.merge(args.input_path)
             gmsh.fltk.run()
             gmsh.finalize()
+    elif ext == ".bp":
+        mesh = a4x.read_mesh(args.input_path, MPI.COMM_WORLD)
+        cell_tags = a4x.read_meshtags(args.input_path, mesh, meshtag_name="cell_tags")
+        facet_tags = a4x.read_meshtags(args.input_path, mesh, meshtag_name="facet_tags")
+        #
+        V = fem.functionspace(mesh, ("Lagrange", 1))
+        uh = fem.Function(V)
+        a4x.read_function(args.input_path, uh, name="solution")
+        #        
+        if MPI.COMM_WORLD.rank == 0:
+            topology, cell_types, geometry = vtk_mesh(mesh, mesh.topology.dim)
+            grid = pv.UnstructuredGrid(topology, cell_types, geometry)
+            grid.point_data["uh"] = uh.x.array.real
 
+            xmin, xmax, ymin, ymax, zmin, zmax = grid.bounds
+            slices = grid.slice_orthogonal(x=(xmin+xmax)/2, y=(ymin+ymax)/2, z=(zmin+zmax)/2)
+            p = pv.Plotter()
+            p.add_mesh(slices, scalars="uh", cmap="viridis", clim=[0, np.max(uh.x.array.real)])
+            p.add_mesh(grid.outline(), color="k")
+            p.show_axes()
+            p.show()
 
 def parse_args(argv=None):
     """ Parse command line arguments """

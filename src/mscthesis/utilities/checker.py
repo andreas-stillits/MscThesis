@@ -18,7 +18,7 @@ import argparse
 
 def check_io_paths(args: argparse.Namespace, input_extension: str, output_extension: str) -> None:
     # Check if input file exists
-    if not os.path.isfile(args.input_path):
+    if not os.path.exists(args.input_path):
         raise FileNotFoundError(f"Input file {args.input_path} does not exist.")
 
     # Check if input file has the correct extension
