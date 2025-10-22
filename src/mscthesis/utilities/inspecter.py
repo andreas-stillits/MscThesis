@@ -1,7 +1,7 @@
 """ 
 quick_plot.py 
 
-Functionality to quickly visualize mesh-related data files (.npy, .stl, .msh (3D), .msh (with physical groups))
+Functionality to quickly visualize mesh-related data files (.npy, .stl, .msh (3D), .msh (with physical groups), .bp (FEM solution slices))
 The appropriate visualization tool is chosen based on file extension.
 
 Usage:
