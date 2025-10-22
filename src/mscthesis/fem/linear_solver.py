@@ -19,7 +19,7 @@ import argparse
 from mpi4py import MPI
 from petsc4py import PETSc
 import pyvista as pv
-
+import adios4dolfinx as a4x
 import ufl 
 from dolfinx import fem, plot
 from dolfinx.fem.petsc import LinearProblem
@@ -43,12 +43,12 @@ def main(argv=None):
     p.add_argument("input_path", type=str, help="Input mesh file in .msh format")
     p.add_argument("--suppress", default=False, action="store_true", help="Suppress output messages")
     p.add_argument("--order", type=int, default=ORDER, help=f"Finite element order (default: {ORDER})")
-    p.add_argument("--output-path", type=str, default=None, help="Output path for solution. If not provided, will use input path with .xdmf extension.")
+    p.add_argument("--output-path", type=str, default=None, help="Output path for solution. If not provided, will use input path with .bp extension.")
     p.add_argument("--plot", default=False, action="store_true", help="Plot the solution using pyvista")
     args = p.parse_args(argv)
     
     # check if input file exists, has right extension and check/derive output path
-    check_io_paths(args, ".msh", ".xdmf")
+    check_io_paths(args, ".msh", ".bp")
 
     reporter = Reporter(args, __file__)
     reporter.start_log()
@@ -74,7 +74,7 @@ def main(argv=None):
     u   = ufl.TrialFunction(V)
     v   = ufl.TestFunction(V)
     x   = ufl.SpatialCoordinate(mesh)
-    phi = ( x[0]**2 + x[1]**2 - STOMATAL_RADIUS**2)
+    phi = (x[0]**2 + x[1]**2 - STOMATAL_RADIUS**2)
     gs  = STOMATAL_CONDUCTANCE * 0.5 * (1.0 - ufl.tanh(phi/STOMATAL_BLUR))
 
     D  = fem.Constant(mesh, PETSc.ScalarType(DIFFUSIVITY)) 
@@ -100,12 +100,12 @@ def main(argv=None):
     uh = problem.solve() 
     reporter.print("Linear system solved.")
 
-    # Save solution to XDMF
+    # Save solution to .bp
     reporter.print(f"Saving solution to {args.output_path}...")
-    with XDMFFile(MPI.COMM_WORLD, args.output_path, "w") as xdmf:
-        xdmf.write_mesh(mesh)
-        uh.name = "solution"
-        xdmf.write_function(uh)
+    a4x.write_mesh(args.output_path, mesh)
+    a4x.write_meshtags(args.output_path, mesh, cell_tags)
+    a4x.write_meshtags(args.output_path, mesh, facet_tags)
+    a4x.write_function(args.output_path, uh, name="solution")
 
     reporter.end_log()
 
