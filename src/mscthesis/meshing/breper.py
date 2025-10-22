@@ -19,7 +19,7 @@ Options:
     --suppress               Suppress verbose output
     --smoothing_iter N       Number of Taubin smoothing iterations (default 10)
     --decimate N             Target number of triangles after decimation (default 10,000)
-    --open-gui               Open Open3D visualization window (default: False)
+    --plot                   Open Open3D visualization window (default: False)
 """
 
 import os
@@ -33,6 +33,8 @@ import open3d
 from skimage import measure
 from mscthesis.utilities.reporter import Reporter
 from mscthesis.utilities.checker import check_io_paths
+import mscthesis.utilities.inspecter as inspecter
+
 
 
 DEFAULT_FREECAD_CMD = "freecadcmd-daily"
@@ -62,7 +64,7 @@ def main(argv=None):
     p.add_argument("--smoothing-iter", type=int, default=DEFAULT_SMOOTHING_ITER, help=f"Number of Taubin smoothing iterations (default {DEFAULT_SMOOTHING_ITER})")
     p.add_argument("--decimate", type=int, default=DEFAULT_DECIMATE, help=f"Target number of triangles after decimation (default {DEFAULT_DECIMATE})")
     p.add_argument("--shrinkage-tolerance", type=float, default=SHRINKAGE_TOLERANCE, help=f"Maximum allowed surface/volume shrinkage (default {100 * SHRINKAGE_TOLERANCE:.1f} %%)") # 2 percent signs do to argparse formatting standards. Will read as one
-    p.add_argument("--open-gui", default=False, action="store_true", help="Open Open3D visualization window (default: False)")
+    p.add_argument("--plot", default=False, action="store_true", help="Open Open3D visualization window (default: False)")
     args = p.parse_args(argv)
     
     # check if input file exists, has right extension and check/derive output path
@@ -172,8 +174,8 @@ def main(argv=None):
     
     reporter.end_log()
     
-    if args.open_gui:
-        open3d.visualization.draw_geometries([mesh], point_show_normal=True, mesh_show_wireframe=True)
+    if args.plot:
+        inspecter.main([stl_path])
     
     return 0
 

@@ -14,7 +14,7 @@ Options:
     --bm <float>             Boundary margin fraction for cylinder plug no-flux boundaries (default: 0.01)
     --scm <float>            Substomatal cavity margin fraction for cylinder plug (default: 0.2)
     --tolerance <float>      Tolerance for geometric comparisons (default: 0.01)
-    --open-gui               Open the Gmsh GUI to visualize the mesh after generation
+    --plot                   Open the Gmsh GUI to visualize the mesh after generation
 """
 
 import os
@@ -23,6 +23,7 @@ import numpy as np
 import gmsh 
 from mscthesis.utilities.reporter import Reporter
 from mscthesis.utilities.checker import check_io_paths
+import mscthesis.utilities.inspecter as inspecter
 
 # set namespace
 kernel = gmsh.model.occ
@@ -82,7 +83,7 @@ def main(argv=None):
     p.add_argument("--min-distance", type=float, default=MINIMUM_DISTANCE, help=f"Minimum distance for mesh size field (default: {MINIMUM_DISTANCE:.3f})")
     p.add_argument("--max-distance", type=float, default=MAXIMUM_DISTANCE, help=f"Maximum distance for mesh size field (default: {MAXIMUM_DISTANCE:.3f})")
     p.add_argument("--inlet-base-resolution-factor", type=float, default=INLET_BASE_RESOLUTION_FACTOR, help=f"Base resolution factor for inlet (default: {INLET_BASE_RESOLUTION_FACTOR:.2f})")
-    p.add_argument("--open-gui", default=False, action="store_true", help="Open the Gmsh GUI to visualize the mesh after generation")    
+    p.add_argument("--plot", default=False, action="store_true", help="Open the Gmsh GUI to visualize the mesh after generation")    
     args = p.parse_args(argv)
     
     # check if input file exists, has right extension and check/derive output path
@@ -267,8 +268,8 @@ def main(argv=None):
     reporter.print(f"Mesh written to {args.output_path}")
     reporter.end_log()
 
-    if args.open_gui: 
-        gmsh.fltk.run()
+    if args.plot: 
+        inspecter.main([args.output_path])
 
     gmsh.finalize()
         

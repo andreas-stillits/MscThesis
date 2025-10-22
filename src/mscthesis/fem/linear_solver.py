@@ -14,18 +14,17 @@ Options:
 
 """
 
-import os
 import argparse
 from mpi4py import MPI
 from petsc4py import PETSc
-import pyvista as pv
 import adios4dolfinx as a4x
 import ufl 
-from dolfinx import fem, plot
+from dolfinx import fem
 from dolfinx.fem.petsc import LinearProblem
-from dolfinx.io import gmshio, XDMFFile 
+from dolfinx.io import gmshio
 from mscthesis.utilities.reporter import Reporter
 from mscthesis.utilities.checker import check_io_paths
+import mscthesis.utilities.inspecter as inspecter
 
 ORDER = 1 # Default finite element order
 DIFFUSIVITY = 0.1
@@ -110,17 +109,7 @@ def main(argv=None):
     reporter.end_log()
 
     if args.plot and MPI.COMM_WORLD.rank == 0:
-        topology, cell_types, geometry = plot.vtk_mesh(mesh, mesh.topology.dim)
-        grid = pv.UnstructuredGrid(topology, cell_types, geometry)
-        grid.point_data["uh"] = uh.x.array.real
-
-        xmin, xmax, ymin, ymax, zmin, zmax = grid.bounds
-        slices = grid.slice_orthogonal(x=(xmin+xmax)/2, y=(ymin+ymax)/2, z=(zmin+zmax)/2)
-        p = pv.Plotter()
-        p.add_mesh(slices, scalars="uh", cmap="viridis", clim=[0, ATMOSPHERIC_CONC])
-        p.add_mesh(grid.outline(), color="k")
-        p.show_axes()
-        p.show()
+        inspecter.main([args.output_path])
 
     return 0
 
