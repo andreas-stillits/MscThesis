@@ -7,12 +7,12 @@ and printed messages to a log file, and optionally
 suppress console output if desired.
 
 Usage:
-    from reporter import Reporter
+    from mscthesis.utilities.reporter import Reporter
     reporter = Reporter(args, __file__)
     reporter.start_log()
     ________________
 
-    main scrit ...
+    main script ...
     
     reporter.print("...") as you would usually print
     
@@ -29,7 +29,7 @@ from datetime import datetime
 import time
 
 class Reporter:
-    def __init__(self, args: argparse.Namespace, parent: str):
+    def __init__(self, args: argparse.Namespace, parent: str) -> None:
         self.log_path = args.output_path if hasattr(args, 'output_path') else "default_reporter.txt"
         self.log_path = os.path.splitext(self.log_path)[0] # remove extension if any
         self.log_path += "_" + os.path.splitext(os.path.basename(parent))[0] + "_log.txt"
@@ -46,7 +46,7 @@ class Reporter:
         else:
             self.log_file = None
         
-    def start_log(self):
+    def start_log(self) -> None:
         if self.log_file and self.args:
             # record start time
             self.start_time = time.perf_counter()
@@ -70,14 +70,14 @@ class Reporter:
             raise ValueError("Cannot log arguments: log_file or args is None")
 
 
-    def print(self, message: str):
+    def print(self, message: str) -> None:
         if not self.suppress_console_output:
             print(message)
         if self.log_file:
             self.log_file.write(message + '\n')
             self.log_file.flush() # forces to main memory immediately
 
-    def end_log(self):
+    def end_log(self) -> None:
         if self.log_file:
             # record end time
             self.end_time = time.perf_counter()

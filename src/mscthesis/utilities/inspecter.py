@@ -1,15 +1,18 @@
 """ 
-quick_plot.py 
+inspecter.py 
 
 Functionality to quickly visualize mesh-related data files (.npy, .stl, .msh (3D), .msh (with physical groups), .bp (FEM solution slices))
 The appropriate visualization tool is chosen based on file extension.
 
 Usage:
-    python quick_plot.py <input_path> [--groups]
+    python -m mscthesis.utilities.inspecter <input_path> [options]
 
-    --groups: If input is a .msh file, plot physical groups
+Options:
+
+    --groups: If input is a .msh file, plot physical groups in pyvista instead of using gmsh GUI.
 
 """
+
 import os
 import argparse 
 import numpy as np
@@ -20,12 +23,11 @@ from dolfinx.io import gmshio
 from dolfinx.plot import vtk_mesh
 from mpi4py import MPI 
 import adios4dolfinx as a4x
-
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import open3d
 
-def inspecter(args: argparse.Namespace):
+def inspecter(args: argparse.Namespace) -> None:
     """ Quick plot of a datafile """
     # check if file exists
     if not os.path.exists(args.input_path):
@@ -95,15 +97,15 @@ def inspecter(args: argparse.Namespace):
             p.show_axes()
             p.show()
 
-def parse_args(argv=None):
+def parse_args(argv=None) -> argparse.Namespace:
     """ Parse command line arguments """
     p = argparse.ArgumentParser(description="Quick plot of a mesh-related datafile")
-    p.add_argument("input_path", type=str, help="Path to input mesh file (.npy, .stl, .msh)")
+    p.add_argument("input_path", type=str, help="Path to input mesh file (.npy, .stl, .msh, .bp)")
     p.add_argument("--groups", default=False, action="store_true", help="If input is a .msh file, plot physical groups")
     return p.parse_args(argv)
 
 
-def main(argv=None):
+def main(argv=None) -> int:
     args = parse_args(argv)
     inspecter(args)
     return 0
