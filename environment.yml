@@ -20,6 +20,6 @@ dependencies:
   - adios4dolfinx=0.9.5
   - pip 
   - pip:
-      - gmsh=4.14.1
+      - gmsh==4.14.1
       - -e .[dev]
 
