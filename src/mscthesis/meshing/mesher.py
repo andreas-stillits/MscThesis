@@ -17,7 +17,6 @@ Options:
     --plot                   Open the Gmsh GUI to visualize the mesh after generation
 """
 
-import os
 import argparse
 import numpy as np 
 import gmsh 
