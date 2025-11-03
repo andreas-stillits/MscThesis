@@ -20,6 +20,7 @@ msc-inspecter = "mscthesis.utilities.inspecter:main"
 msc-mesher = "mscthesis.meshing.mesher:main"
 msc-breper = "mscthesis.meshing.breper:main"
 msc-linear-solver = "mscthesis.fem.linear_solver:main"
+msc-extracter = "mscthesis.fem.extracter:main"
 # others ...
     
 [tool.hatch.build.targets.wheel]
