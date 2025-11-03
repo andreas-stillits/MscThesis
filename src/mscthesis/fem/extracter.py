@@ -25,11 +25,16 @@ import numpy as np
 #
 # OBS:LATER ON, EXTRACTION LIKE THIS IS HIGHLY PARALLELIZABLE!
 #
+# NB: IMPLEMENT "inside" AS CONTINUOUS tanh INSTEAD OF CONDITIONAL TO GET A SMOOTHER BEHAVIOUR
+#
+# NB: CONSIDER ANNOTATING PHYSICAL GROUPS CORRESPONDING TO z-SLICES IN GMSH. *dont know if it is less stable/efficient that quadrature-based extraction though*
+#
 # OBS
 
 
 # default parameters
 DEFAULT_RESOLUTION = 50
+DEFAULT_QDEGREE = 8
 TOLERANCE = 1e-3
 
 
@@ -38,6 +43,7 @@ def main(argv=None):
     p.add_argument("input_path", type=str, help="Input path must be a .bp folder")
     p.add_argument("--output_path", type=str, help="Output path must be a .txt file")
     p.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION, help=f"Resolution along z-axis (default: {DEFAULT_RESOLUTION})")
+    p.add_argument("--qdegree", type=int, default=DEFAULT_QDEGREE, help=f"Quadrature degree for integration (default: {DEFAULT_QDEGREE})")
     p.add_argument("--plot", default=False, action="store_true", help="If set, plot the mean and variance profiles")
     args = p.parse_args(argv)
 
@@ -59,73 +65,50 @@ def main(argv=None):
     dz = (zmax - zmin) / args.resolution
     edges = np.arange(zmin, zmax + TOLERANCE, dz)
     centers = (edges[:-1] + edges[1:]) / 2
-    tdim = mesh.topology.dim
-    print(f"DEBUG: zmin={zmin},\n zmax={zmax},\n dz={dz},\n edges={edges},\n centers={centers} \n _____\n")
 
-    # cell midpoints (vectorized)
-    cells = np.arange(mesh.topology.index_map(tdim).size_local, dtype=np.int32)
-    cell2vert = mesh.topology.connectivity(tdim, 0)
-    x = mesh.geometry.x
-    cell_mid_z = np.array([x[cell2vert.links(c)].mean(axis=0)[2] for c in cells])
-    print(f"DEBUG: cell_mid_z = {cell_mid_z} \n _____\n")
+    z = ufl.SpatialCoordinate(mesh)[2]
 
-    # Create MeshTags for cells: tag each cell by its slice index k
-    cell_tags = np.full(cells.shape, -1, dtype=np.int32)
-    for k, (a,b) in enumerate(zip(edges[:-1], edges[1:])):
-        m = (cell_mid_z >= a) & (cell_mid_z < b if k < len(centers)-1 else cell_mid_z <= b)
-        cell_tags[m] = k
-
-    ct = dmesh.meshtags(mesh, tdim, cells, cell_tags)
-    dx = ufl.Measure("dx", domain=mesh, subdomain_data=ct)
-
-    # V = uh.function_space  # your solved solution uh \in V
-
-    N = len(centers)
-    zs = np.zeros(N)
-    V_solids = np.zeros(N)
-    u_means  = np.zeros(N)
-    u2_means = np.zeros(N)
-
-    for k in range(len(centers)):
-        # Solid volume in slice k
-        V_solid = fem.assemble_scalar(fem.form(1 * dx(k)))
-        # Average u over solid in slice
-        U_int = fem.assemble_scalar(fem.form(uh * dx(k)))
+    def get_slice_quantities(a, b, qdeg=DEFAULT_QDEGREE):
+        inside = ufl.conditional(ufl.And(ufl.ge(z, a), ufl.lt(z, b)), 1.0, 0.0)
+        dx_q = ufl.dx(metadata={"quadrature_degree": qdeg})
+        V_solid = fem.assemble_scalar(fem.form(inside * dx_q))
+        U_int = fem.assemble_scalar(fem.form(uh * inside * dx_q))
+        U2_int = fem.assemble_scalar(fem.form(uh**2 * inside * dx_q))
         u_avg = U_int / V_solid if V_solid > 0 else np.nan
-        # Average u^2 over solid in slice
-        U2_int = fem.assemble_scalar(fem.form(uh**2 * dx(k)))
         u2_avg = U2_int / V_solid if V_solid > 0 else np.nan
-        # Append slice statistics
-        zs[k] = centers[k]
-        V_solids[k] = V_solid
-        u_means[k] = u_avg
-        u2_means[k] = u2_avg
-    
+        return V_solid, u_avg, u2_avg
+
+    quantities = np.vstack([list(get_slice_quantities(a, b, qdeg=args.qdegree)) for a, b in zip(edges[:-1], edges[1:])])
+
+    V_solids = quantities[:, 0]
+    u_means  = quantities[:, 1]
+    u2_means = quantities[:, 2]
     u_std = np.sqrt(u2_means - u_means**2)
 
-    data = np.vstack([zs, V_solids, u_means, u2_means, u_std]).T
+
+    data = np.vstack([centers, V_solids, u_means, u2_means, u_std]).T
     np.savetxt(args.output_path, data, header="z V_solid u_mean u2_mean u_std", delimiter=";")
     reporter.print(f"Saved extracted data to {args.output_path}.")
+    reporter.end_log()
 
     # optional plotting
     if args.plot:
-        reporter.print("Plotting mean and variance profiles...")
         fig, ax1 = plt.subplots()
 
         color = 'tab:blue'
         ax1.set_xlabel('z')
         ax1.set_ylabel('Mean CO2', color=color)
-        ax1.plot(zs, u_means, color=color, label='Mean CO2')
+        ax1.plot(centers, u_means, color=color, label='Mean CO2')
         ax1.tick_params(axis='y', labelcolor=color)
 
         # plot std as a fill between band around the mean
-        ax1.fill_between(zs, u_means - u_std, u_means + u_std, color=color, alpha=0.3, label='Std Dev Band')
+        ax1.fill_between(centers, u_means - u_std, u_means + u_std, color=color, alpha=0.3, label='Std Dev Band')
 
         # plot v_solid on secondary y-axis
         ax2 = ax1.twinx()
         color = 'tab:red'
         ax2.set_ylabel('Solid Volume', color=color)
-        ax2.plot(zs, V_solids, color=color, linestyle='--', label='Solid Volume')
+        ax2.plot(centers, V_solids, color=color, linestyle='--', label='Solid Volume')
         ax2.tick_params(axis='y', labelcolor=color)
     
         ax1.set_xlim(0, 1.05)
@@ -137,10 +120,6 @@ def main(argv=None):
         plt.legend()
         plt.title("CO2 Mean and Standard Deviation Profiles along z-axis")
         plt.show()
-        reporter.print("Plotting completed.")
-
-
-    reporter.end_log()
     
     return 0
 
