@@ -16,7 +16,7 @@ from mscthesis.utilities.reporter import Reporter
 from mscthesis.utilities.checker import check_io_paths
 from mpi4py import MPI
 import adios4dolfinx as a4x
-from dolfinx import fem, mesh as dmesh
+from dolfinx import fem
 import ufl
 import matplotlib.pyplot as plt 
 import numpy as np 
