@@ -24,6 +24,7 @@ from dolfinx.plot import vtk_mesh
 from mpi4py import MPI
 import adios4dolfinx as a4x
 import warnings
+import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 import open3d
@@ -120,6 +121,49 @@ def inspecter(args: argparse.Namespace) -> None:
             p.add_mesh(grid.outline(), color="k")
             p.show_axes()
             p.show()
+    elif ext == ".txt":
+        data = np.loadtxt(args.input_path, skiprows=1, delimiter=";")
+        centers = data[:, 0]
+        V_solids = data[:, 1]
+        u_means = data[:, 2]
+        u2_means = data[:, 3]
+        u_std = data[:, 4]
+        fig, ax1 = plt.subplots()
+
+        color = "tab:blue"
+        ax1.set_xlabel("z")
+        ax1.set_ylabel("Mean CO2", color=color)
+        ax1.plot(centers, u_means, color=color, label="Mean CO2")
+        ax1.tick_params(axis="y", labelcolor=color)
+
+        # plot std as a fill between band around the mean
+        ax1.fill_between(
+            centers,
+            u_means - u_std,
+            u_means + u_std,
+            color=color,
+            alpha=0.3,
+            label="Std Dev Band",
+        )
+
+        # plot v_solid on secondary y-axis
+        ax2 = ax1.twinx()
+        color = "tab:red"
+        ax2.set_ylabel("Solid Volume", color=color)
+        ax2.plot(centers, V_solids, color=color, linestyle="--", label="Solid Volume")
+        ax2.tick_params(axis="y", labelcolor=color)
+
+        ax1.set_xlim(0, 1.05)
+        ax1.set_ylim(0, 1.05)
+        ax2.set_ylim(0, 1.1 * np.max(V_solids))
+        ax1.grid()
+
+        fig.tight_layout()
+        plt.legend()
+        plt.title("CO2 Mean and Standard Deviation Profiles along z-axis")
+        plt.show()
+    else:
+        raise ValueError(f"Unsupported file extension: {ext}")
 
 
 def parse_args(argv=None) -> argparse.Namespace:

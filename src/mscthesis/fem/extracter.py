@@ -18,8 +18,8 @@ from mpi4py import MPI
 import adios4dolfinx as a4x
 from dolfinx import fem
 import ufl
-import matplotlib.pyplot as plt 
-import numpy as np 
+import matplotlib.pyplot as plt
+import numpy as np
 
 # OBS
 #
@@ -39,18 +39,35 @@ TOLERANCE = 1e-3
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Functionality to extract the xy mean and variance of CO2 field as a function of z")
+    p = argparse.ArgumentParser(
+        description="Functionality to extract the xy mean and variance of CO2 field as a function of z"
+    )
     p.add_argument("input_path", type=str, help="Input path must be a .bp folder")
     p.add_argument("--output_path", type=str, help="Output path must be a .txt file")
-    p.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION, help=f"Resolution along z-axis (default: {DEFAULT_RESOLUTION})")
-    p.add_argument("--qdegree", type=int, default=DEFAULT_QDEGREE, help=f"Quadrature degree for integration (default: {DEFAULT_QDEGREE})")
-    p.add_argument("--plot", default=False, action="store_true", help="If set, plot the mean and variance profiles")
+    p.add_argument(
+        "--resolution",
+        type=int,
+        default=DEFAULT_RESOLUTION,
+        help=f"Resolution along z-axis (default: {DEFAULT_RESOLUTION})",
+    )
+    p.add_argument(
+        "--qdegree",
+        type=int,
+        default=DEFAULT_QDEGREE,
+        help=f"Quadrature degree for integration (default: {DEFAULT_QDEGREE})",
+    )
+    p.add_argument(
+        "--plot",
+        default=False,
+        action="store_true",
+        help="If set, plot the mean and variance profiles",
+    )
     args = p.parse_args(argv)
 
-    check_io_paths(args, ".bp", ".txt") # input and output extensions
+    check_io_paths(args, ".bp", ".txt")  # input and output extensions
     reporter = Reporter(args, __file__)
     reporter.start_log()
-    
+
     # load data
     reporter.print(f"Loading data from {args.input_path}...")
     mesh = a4x.read_mesh(args.input_path, MPI.COMM_WORLD)
@@ -59,7 +76,7 @@ def main(argv=None):
     uh = fem.Function(V)
     a4x.read_function(args.input_path, uh, name="solution")
 
-    # create z bins and compute first and second moments across xy slices 
+    # create z bins and compute first and second moments across xy slices
     reporter.print("Extracting mean and variance profiles along z-axis...")
     zmin, zmax = mesh.geometry.x[:, 2].min(), mesh.geometry.x[:, 2].max()
     dz = (zmax - zmin) / args.resolution
@@ -78,16 +95,22 @@ def main(argv=None):
         u2_avg = U2_int / V_solid if V_solid > 0 else np.nan
         return V_solid, u_avg, u2_avg
 
-    quantities = np.vstack([list(get_slice_quantities(a, b, qdeg=args.qdegree)) for a, b in zip(edges[:-1], edges[1:])])
+    quantities = np.vstack(
+        [
+            list(get_slice_quantities(a, b, qdeg=args.qdegree))
+            for a, b in zip(edges[:-1], edges[1:])
+        ]
+    )
 
     V_solids = quantities[:, 0]
-    u_means  = quantities[:, 1]
+    u_means = quantities[:, 1]
     u2_means = quantities[:, 2]
     u_std = np.sqrt(u2_means - u_means**2)
 
-
     data = np.vstack([centers, V_solids, u_means, u2_means, u_std]).T
-    np.savetxt(args.output_path, data, header="z V_solid u_mean u2_mean u_std", delimiter=";")
+    np.savetxt(
+        args.output_path, data, header="z V_solid u_mean u2_mean u_std", delimiter=";"
+    )
     reporter.print(f"Saved extracted data to {args.output_path}.")
     reporter.end_log()
 
@@ -95,34 +118,40 @@ def main(argv=None):
     if args.plot:
         fig, ax1 = plt.subplots()
 
-        color = 'tab:blue'
-        ax1.set_xlabel('z')
-        ax1.set_ylabel('Mean CO2', color=color)
-        ax1.plot(centers, u_means, color=color, label='Mean CO2')
-        ax1.tick_params(axis='y', labelcolor=color)
+        color = "tab:blue"
+        ax1.set_xlabel("z")
+        ax1.set_ylabel("Mean CO2", color=color)
+        ax1.plot(centers, u_means, color=color, label="Mean CO2")
+        ax1.tick_params(axis="y", labelcolor=color)
 
         # plot std as a fill between band around the mean
-        ax1.fill_between(centers, u_means - u_std, u_means + u_std, color=color, alpha=0.3, label='Std Dev Band')
+        ax1.fill_between(
+            centers,
+            u_means - u_std,
+            u_means + u_std,
+            color=color,
+            alpha=0.3,
+            label="Std Dev Band",
+        )
 
         # plot v_solid on secondary y-axis
         ax2 = ax1.twinx()
-        color = 'tab:red'
-        ax2.set_ylabel('Solid Volume', color=color)
-        ax2.plot(centers, V_solids, color=color, linestyle='--', label='Solid Volume')
-        ax2.tick_params(axis='y', labelcolor=color)
-    
+        color = "tab:red"
+        ax2.set_ylabel("Solid Volume", color=color)
+        ax2.plot(centers, V_solids, color=color, linestyle="--", label="Solid Volume")
+        ax2.tick_params(axis="y", labelcolor=color)
+
         ax1.set_xlim(0, 1.05)
         ax1.set_ylim(0, 1.05)
-        ax2.set_ylim(0, 1.1*np.max(V_solids))
+        ax2.set_ylim(0, 1.1 * np.max(V_solids))
         ax1.grid()
 
-        fig.tight_layout()  
+        fig.tight_layout()
         plt.legend()
         plt.title("CO2 Mean and Standard Deviation Profiles along z-axis")
         plt.show()
-    
-    return 0
 
+    return 0
 
 
 if __name__ == "__main__":
