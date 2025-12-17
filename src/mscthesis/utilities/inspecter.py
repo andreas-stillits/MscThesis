@@ -150,12 +150,18 @@ def inspecter(args: argparse.Namespace) -> None:
         ax2 = ax1.twinx()
         color = "tab:red"
         ax2.set_ylabel("Solid Volume", color=color)
-        ax2.plot(centers, V_solids, color=color, linestyle="--", label="Solid Volume")
+        ax2.plot(
+            centers,
+            V_solids / np.max(V_solids),
+            color=color,
+            linestyle="--",
+            label="Solid Volume",
+        )
         ax2.tick_params(axis="y", labelcolor=color)
 
         ax1.set_xlim(0, 1.05)
         ax1.set_ylim(0, 1.05)
-        ax2.set_ylim(0, 1.1 * np.max(V_solids))
+        ax2.set_ylim(0, 1.05)
         ax1.grid()
 
         fig.tight_layout()
