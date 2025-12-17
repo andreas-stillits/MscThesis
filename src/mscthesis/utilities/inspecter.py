@@ -155,7 +155,7 @@ def inspecter(args: argparse.Namespace) -> None:
             V_solids / np.max(V_solids),
             color=color,
             linestyle="--",
-            label="Solid Volume",
+            label="Porosity",
         )
         ax2.tick_params(axis="y", labelcolor=color)
 
