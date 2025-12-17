@@ -299,7 +299,7 @@ def main(argv=None):
     )  # approximation of ellipse circumference to account for slight transform assymetry
 
     curved_area_found = []
-    curved_area_tag = None
+    # curved_area_tag = None
     top_area_tag = None
     bottom_area_tag = None
 
